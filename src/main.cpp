@@ -48,9 +48,7 @@ int main() {
                  }
             }
           }
-
           if(!found){ std::cout << command << ": not found" << std::endl; }
-          else{ std::cout << command << ": not found" << std::endl; }
         }
       }
     }
