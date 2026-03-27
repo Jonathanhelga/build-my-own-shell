@@ -12,6 +12,6 @@ int main() {
     std::getline(std::cin, input);
     if(input == "exit"){ break; }
     if(input.substr(0, 5) == "echo ") { std::cout << input.substr(5) << std::endl; }
-    std::cout << input << ": command not found" << std::endl;
+    // std::cout << input << ": command not found" << std::endl;
   }
 }
