@@ -43,14 +43,6 @@ int main(){
           else{
             if(chdir(args[0].c_str()) != 0){ std::cerr << "cd: " << args[0] << ": No such file or directory\n"; }
           }
-
-          for(auto &a : args){ argv.push_back((char *)a.c_str()); }
-          if(argv.size() > 1) { std::cerr << "cd: " << argv[0] << ": No such file or directory\n"; }
-          else{
-            if(chdir(argv[0]) != 0){
-              std::cerr << "cd: " << argv[0] << ": No such file or directory\n";
-            }
-          }
         }
         else{
             if(args.empty()){ std::cout << program_name << ": not found" << std::endl; }
