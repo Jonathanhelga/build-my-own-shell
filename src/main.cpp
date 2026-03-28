@@ -9,7 +9,33 @@
 #include <unistd.h>
 
 namespace fs = std::filesystem;
-
+std::vector <std::string> tokenize(const std::string &input){
+  std::vector <std::string> tokens;
+  std::string current;
+  size_t i = 0;
+  while(i < input.size()){
+    char c = input[i];
+    if(c == '\''){
+      i++;
+      while(input[i] != '\'' && i < input.size()){
+        current += input[i];
+        i++;
+      }
+      // if(i < input.size()) { i++; }
+    }
+    else if (c == ' ' || c == '\t'){
+      if(!current.empty()){
+        tokens.push_back(current);
+        current.clear();
+      }
+    }
+    else{
+      current += c;
+      i++;
+    }
+    
+  }
+}
 int main(){
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
@@ -28,6 +54,7 @@ int main(){
 
         if(program_name == "exit"){  break;  } 
         else if(program_name == "echo") {
+
           for(size_t i = 0; i < args.size(); i++){
             if(i > 0) std::cout << ' ';
             std::cout << args[i];
