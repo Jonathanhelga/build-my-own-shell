@@ -29,7 +29,7 @@ int main(){
         else if(program_name == "echo") {  std::cout << input.substr(5) << std::endl; }
         else{
             if(args.empty()){ std::cout << program_name << ": not found" << std::endl; }
-            else if(commands.find(args[0]) != commands.end()){ std::cout << args[0] << " is a shell builtin" << std::endl; }
+            // else if(commands.find(args[0]) != commands.end()){ std::cout << args[0] << " is a shell builtin" << std::endl; }
             
             char *path_env = std::getenv("PATH");
             std::string exec_path;
