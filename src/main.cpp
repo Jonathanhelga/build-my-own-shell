@@ -70,9 +70,10 @@ int main(){
           std::cout << p << std::endl;
         }
         else if(program_name == "cat"){
-          for(const auto &filename : args){
-            std::ifstream file(filename);
-            if(!file){ std::cerr << "cat: " << filename << ": No such file or directory\n"; continue; }
+          for(const auto &filePath : args){
+            fs::path path = fs::path(filePath);
+            std::ifstream file(path);
+            if(!file){ std::cerr << "cat: " << path << ": No such file or directory\n"; continue; }
             std::cout << file.rdbuf();
           }
         }
