@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <fstream>
 #include <filesystem>
 #include <iostream>
 #include <sstream>
@@ -39,16 +40,16 @@ std::vector <std::string> tokenize(const std::string &input){
   if(!current.empty()){ tokens.push_back(current); }
   return tokens;
 }
+
 int main(){
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
     while(true){
         std::cout << "$ ";
         std::string input;
-        std::set<std::string> commands = {"exit", "echo", "type", "pwd", "cd"};
+        std::set<std::string> commands = {"exit", "echo", "type", "pwd", "cd", "cat"};
         std::getline(std::cin, input);
-        // std:stringstream ss(input);
-        // ss >> program_name;
+
         auto tokens = tokenize(input);
         if (tokens.empty()) continue;
         std::string program_name = tokens[0];
@@ -67,6 +68,13 @@ int main(){
           char *p;
           p = getcwd(buffer, sizeof(buffer)); //get Current Working Directory
           std::cout << p << std::endl;
+        }
+        else if(program_name == "cat"){
+          for(const auto &filename : args){
+            std::ifstream file(filename);
+            if(!file){ std::cerr << "cat: " << filename << ": No such file or directory\n"; continue; }
+            std::cout << file.rdbuf();
+          }
         }
         else if(program_name == "cd"){
           if(args.size() > 1) {  std::cerr << "cd: too many arguments\n"; }
