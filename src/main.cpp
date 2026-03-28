@@ -28,7 +28,12 @@ int main(){
 
         if(program_name == "exit"){  break;  } 
         else if(program_name == "echo") {  std::cout << input.substr(5) << std::endl; }
-        else if(program_name == "pwd") { std::cout << program_name << " is a shell builtin"; }
+        else if(program_name == "pwd") { 
+          char buffer[1024];
+          char *p;
+          p = getcwd(buffer, sizeof(buffer));
+          std::cout << p << std::endl;
+        }
         else{
             if(args.empty()){ std::cout << program_name << ": not found" << std::endl; }
             else if(commands.find(args[0]) != commands.end()){ std::cout << args[0] << " is a shell builtin" << std::endl; }
