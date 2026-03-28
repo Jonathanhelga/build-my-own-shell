@@ -36,7 +36,7 @@ int main(){
         }
         else if(program_name == "cd"){
           if(args.size() > 1) {  std::cerr << "cd: too many arguments\n"; }
-          else if(args.empty() || args[0] == '~'){
+          else if(args[0] == "~" || args.empty()){
             const char *home = std::getenv("HOME");
             if(home && chdir(home) != 0){ std::cerr << "cd: " << home << ": No such file or directory\n"; }
           }
