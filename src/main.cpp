@@ -79,7 +79,7 @@ int main(){
                             waitpid(pid, &status, 0);
                         }
                     }
-                }else{ std::cout << program_name << ": not found" << std::endl; }
+                }else{ std::cout << searchingWord << ": not found" << std::endl; }
 
             }else{ std::cout << program_name << ": not found" << std::endl; }
 
