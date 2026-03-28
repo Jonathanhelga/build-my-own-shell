@@ -62,7 +62,7 @@ int main(){
 
                 if(found){
                     if(program_name == "type"){
-                        std::cout << searchingWord << "is " << exec_path << std::endl;
+                        std::cout << searchingWord << " is " << exec_path << std::endl;
                     }else{
                         pid_t pid = fork();
                         if(pid == 0){
@@ -80,7 +80,7 @@ int main(){
                         }
                     }
                 }else{ std::cout << program_name << ": not found" << std::endl; }
-                
+
             }else{ std::cout << program_name << ": not found" << std::endl; }
 
         }
