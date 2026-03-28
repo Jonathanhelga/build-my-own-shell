@@ -34,6 +34,8 @@ std::vector <std::string> tokenize(const std::string &input){
       i++;
     }
   }
+  if(!current.empty()){ tokens.push_back(current); }
+  return tokens;
 }
 int main(){
     std::cout << std::unitbuf;
