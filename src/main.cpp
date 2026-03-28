@@ -21,10 +21,11 @@ int main(){
 
         std::stringstream ss(input);
         std::string program_name;
-        ss >> program_name; //kasih isi ss (stringstream) ke program name e.g type, echo, exit
+        ss >> program_name;
         std::vector<std::string> args;
         std::string arg;
         while(ss >> arg){ args.push_back(arg);}
+
         if(program_name == "exit"){  break;  } 
         else if(program_name == "echo") {  std::cout << input.substr(5) << std::endl; }
         else{
@@ -34,6 +35,7 @@ int main(){
               char *path_env = std::getenv("PATH");
               std::string exec_path;
               bool found = false;
+              
               if(path_env != nullptr){
                   std::string path_str = path_env; //same as std::string path_str(path_env);
                   std::stringstream ss(path_str);
@@ -83,7 +85,6 @@ int main(){
 
               }else{ std::cout << program_name << ": not found" << std::endl; }
             }
-
         }
     }
 }
