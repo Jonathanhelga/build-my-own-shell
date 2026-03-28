@@ -21,7 +21,6 @@ std::vector <std::string> tokenize(const std::string &input){
         current += input[i];
         i++;
       }
-      // if(i < input.size()) { i++; }
     }
     else if (c == ' ' || c == '\t'){
       if(!current.empty()){
@@ -55,7 +54,6 @@ int main(){
         else if(program_name == "echo") {
 
           for(size_t i = 0; i < args.size(); i++){
-            if(i > 0) std::cout << ' ';
             std::cout << args[i];
           }
           std::cout << '\n';
