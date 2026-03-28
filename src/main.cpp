@@ -16,7 +16,7 @@ int main(){
     while(true){
         std::cout << "$ ";
         std::string input;
-        std::set<std::string> commands = {"exit", "echo"};
+        std::set<std::string> commands = {"exit", "echo", "type"};
         std::getline(std::cin, input);
 
         std::stringstream ss(input);
