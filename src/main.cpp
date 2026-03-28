@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 namespace fs = std::filesystem;
+// g++ -std=c++17 -o shell src/main.cpp
 std::vector <std::string> tokenize(const std::string &input){
   std::vector <std::string> tokens;
   std::string current;
@@ -21,7 +22,7 @@ std::vector <std::string> tokenize(const std::string &input){
         current += input[i];
         i++;
       }
-      if(i < input.size()) i++; // skip closing '
+      // if(i < input.size()) i++; // skip closing '
     }
     else if (c == ' ' || c == '\t'){
       if(!current.empty()){
@@ -57,7 +58,7 @@ int main(){
         else if(program_name == "echo") {
 
           for(size_t i = 0; i < args.size(); i++){
-            std::cout << args[i];
+            std::cout << args[i] << ' ';
           }
           std::cout << '\n';
         }
