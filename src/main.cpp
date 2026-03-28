@@ -35,10 +35,21 @@ int main(){
           std::cout << p << std::endl;
         }
         else if(program_name == "cd"){
-          std::vector<char *> argv;
+          if(args.size() > 1) {  std::cerr << "cd: too many arguments\n"; }
+          else if(args.empty()){
+            const char *home = std::getenv("HOME");
+            if(home && chdir(home) != 0){ std::cerr << "cd: " << home << ": No such file or directory\n"; }
+          }
+          else{
+            if(chdir(args[0].c_str()) != 0){ std::cerr << "cd: " << args[0] << ": No such file or directory\n"; }
+          }
+
           for(auto &a : args){ argv.push_back((char *)a.c_str()); }
-          if(chdir(argv[0]) != 0){
-            std::cerr << "cd: " << argv[0] << ": No such file or directory\n";
+          if(argv.size() > 1) { std::cerr << "cd: " << argv[0] << ": No such file or directory\n"; }
+          else{
+            if(chdir(argv[0]) != 0){
+              std::cerr << "cd: " << argv[0] << ": No such file or directory\n";
+            }
           }
         }
         else{
