@@ -32,8 +32,6 @@ int main() {
     }
 
     if(program_name == "exit"){  break;  } 
-    else if(input.substr(0, 5) == "type "){
-    }
     else if(program_name == "echo ") {  std::cout << input.substr(5) << std::endl; }
     else { 
       if(commands.find(program_name) != commands.end()){ std::cout << program_name << " is a shell builtin" << std::endl; }
