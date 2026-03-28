@@ -21,7 +21,7 @@ std::vector <std::string> tokenize(const std::string &input){
         current += input[i];
         i++;
       }
-      // if(i < input.size()) i++; // skip closing '
+      if(i < input.size()) i++; // skip closing '
     }
     else if (c == ' ' || c == '\t'){
       if(!current.empty()){
