@@ -27,7 +27,7 @@ int main(){
         while(ss >> arg){ args.push_back(arg);}
 
         if(program_name == "exit"){  break;  } 
-        else if(program_name == "echo") {  std::cout << input.substr(5) << std::endl; }
+        else if(program_name == "echo") {  std::cout << args << std::endl; }
         else if(program_name == "pwd") { 
           char buffer[1024];
           char *p;
