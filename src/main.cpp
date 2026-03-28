@@ -56,14 +56,15 @@ int main() {
                  (perms & fs::perms::others_exec) != fs::perms::none) {
                     exec_path = full_path.string();
                     found = true;
-                    if(program_name == "type" && found){
-                      std::cout << program_name << " is " << full_path.string() << std::endl;
-                    }
                     break;
                  }
             }
           }
           if(found){
+            if(program_name == "type" && found){
+              std::cout << program_name << " is " << exec_path << std::endl;
+              return 0;
+            }
             pid_t pid = fork();
             if(pid == 0){
               std::vector<char *> argv;
