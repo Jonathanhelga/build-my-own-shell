@@ -35,7 +35,7 @@ int main(){
               char *path_env = std::getenv("PATH");
               std::string exec_path;
               bool found = false;
-              
+
               if(path_env != nullptr){
                   std::string path_str = path_env; //same as std::string path_str(path_env);
                   std::stringstream ss(path_str);
@@ -53,8 +53,8 @@ int main(){
                       if(fs::exists(full_path)){
                           auto perms = fs::status(full_path).permissions();
                           if((perms & fs::perms::owner_exec) != fs::perms::none ||
-                            (perms & fs::perms::group_exec) != fs::perms::none ||
-                            (perms & fs::perms::others_exec) != fs::perms::none) {
+                             (perms & fs::perms::group_exec) != fs::perms::none ||
+                             (perms & fs::perms::others_exec) != fs::perms::none){
                               exec_path = full_path.string();
                               found = true;
                               break;
@@ -63,24 +63,24 @@ int main(){
                   }
 
                   if(found){
-                      if(program_name == "type"){
-                          std::cout << searchingWord << " is " << exec_path << std::endl;
-                      }else{
-                          pid_t pid = fork();
-                          if(pid == 0){
-                              std::vector<char *> argv;
-                              argv.push_back((char *)program_name.c_str());
-                              for(auto &a : args){
-                                  argv.push_back((char *)a.c_str());
-                              }
-                              argv.push_back(nullptr);
-                              execv(exec_path.c_str(), argv.data());
-                              exit(1);
-                          }else if(pid > 0){
-                              int status;
-                              waitpid(pid, &status, 0);
-                          }
-                      }
+                    if(program_name == "pwd"){  std::cout << exec_path << std::endl;  }
+                    else if(program_name == "type"){ std::cout << searchingWord << " is " << exec_path << std::endl; }
+                    else{
+                        pid_t pid = fork();
+                        if(pid == 0){
+                            std::vector<char *> argv;
+                            argv.push_back((char *)program_name.c_str());
+                            for(auto &a : args){
+                                argv.push_back((char *)a.c_str());
+                            }
+                            argv.push_back(nullptr);
+                            execv(exec_path.c_str(), argv.data());
+                            exit(1);
+                        }else if(pid > 0){
+                            int status;
+                            waitpid(pid, &status, 0);
+                        }
+                    }
                   }else{ std::cout << searchingWord << ": not found" << std::endl; }
 
               }else{ std::cout << program_name << ": not found" << std::endl; }
