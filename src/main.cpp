@@ -16,7 +16,7 @@ int main(){
     while(true){
         std::cout << "$ ";
         std::string input;
-        std::set<std::string> commands = {"exit", "echo", "type", "pwd"};
+        std::set<std::string> commands = {"exit", "echo", "type", "pwd", "cd"};
         std::getline(std::cin, input);
 
         std::stringstream ss(input);
@@ -33,6 +33,13 @@ int main(){
           char *p;
           p = getcwd(buffer, sizeof(buffer)); //get Current Working Directory
           std::cout << p << std::endl;
+        }
+        else if(program_name == "cd"){
+          std::vector<char *> argv;
+          for(auto &a : args){ argv.push_back((char *)a.c_str()); }
+          if(chdir(argv[0]) != 0){
+            std::cerr << "cd: " << argv[0] << ": No such file or directory\n";
+          }
         }
         else{
             if(args.empty()){ std::cout << program_name << ": not found" << std::endl; }
