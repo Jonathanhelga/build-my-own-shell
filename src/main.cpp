@@ -28,8 +28,8 @@ int main() {
         char *path_env = std::getenv("PATH");
         if(path_env != nullptr){
           std::string path_str = path_env; //same as std::string path_str(path_env);
-          std::vector <std::string> path_dirs;
           std::stringstream ss(path_str);
+          std::vector <std::string> path_dirs;
           std::string dir;
 
           while(std::getline(ss, dir, ':')){ path_dirs.push_back(dir); }
