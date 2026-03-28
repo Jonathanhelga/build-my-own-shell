@@ -33,7 +33,6 @@ std::vector <std::string> tokenize(const std::string &input){
       current += c;
       i++;
     }
-    
   }
 }
 int main(){
@@ -44,13 +43,11 @@ int main(){
         std::string input;
         std::set<std::string> commands = {"exit", "echo", "type", "pwd", "cd"};
         std::getline(std::cin, input);
-
-        std::stringstream ss(input);
-        std::string program_name;
-        ss >> program_name;
-        std::vector<std::string> args;
-        std::string arg;
-        while(ss >> arg){ args.push_back(arg);}
+        // std:stringstream ss(input);
+        // ss >> program_name;
+        auto tokens = tokenize(input);
+        std::string program_name = tokens[0];
+        std::vector<std::string> args(tokens.begin() + 1, tokens.end());
 
         if(program_name == "exit"){  break;  } 
         else if(program_name == "echo") {
