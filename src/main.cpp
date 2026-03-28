@@ -47,7 +47,7 @@ int main(){
     while(true){
         std::cout << "$ ";
         std::string input;
-        std::set<std::string> commands = {"exit", "echo", "type", "pwd", "cd", "cat"};
+        std::set<std::string> commands = {"exit", "echo", "type", "pwd", "cd"};
         std::getline(std::cin, input);
 
         auto tokens = tokenize(input);
@@ -70,10 +70,9 @@ int main(){
           std::cout << p << std::endl;
         }
         else if(program_name == "cat"){
-          for(const auto &filePath : args){
-            fs::path path = fs::path(filePath);
-            std::ifstream file(path);
-            if(!file){ std::cerr << "cat: " << path << ": No such file or directory\n"; continue; }
+          for(const auto &fileName : args){
+            std::ifstream file(fileName);
+            if(!file){ std::cerr << "cat: " << fileName << ": No such file or directory\n"; continue; }
             std::cout << file.rdbuf();
           }
         }
