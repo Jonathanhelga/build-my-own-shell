@@ -17,16 +17,18 @@ std::vector <std::string> tokenize(const std::string &input){
     char c = input[i];
     if(c == '\''){
       i++;
-      while(input[i] != '\'' && i < input.size()){
+      while(i < input.size() && input[i] != '\''){
         current += input[i];
         i++;
       }
+      // if(i < input.size()) i++; // skip closing '
     }
     else if (c == ' ' || c == '\t'){
       if(!current.empty()){
         tokens.push_back(current);
         current.clear();
       }
+      i++;
     }
     else{
       current += c;
@@ -47,6 +49,7 @@ int main(){
         // std:stringstream ss(input);
         // ss >> program_name;
         auto tokens = tokenize(input);
+        if (tokens.empty()) continue;
         std::string program_name = tokens[0];
         std::vector<std::string> args(tokens.begin() + 1, tokens.end());
 
