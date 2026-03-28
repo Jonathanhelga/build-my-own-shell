@@ -19,7 +19,7 @@ int main() {
   while(true){
     std::cout << "$ ";
     std::string input;
-    std::set<std::string> commands = {"type", "exit", "echo"};
+    std::set<std::string> commands = {"exit", "echo"};
     std::getline(std::cin, input);
 
     std::stringstream ss(input);
@@ -32,7 +32,7 @@ int main() {
     }
 
     if(program_name == "exit"){  break;  } 
-    else if(program_name == "echo ") {  std::cout << input.substr(5) << std::endl; }
+    else if(program_name == "echo") {  std::cout << input.substr(5) << std::endl; }
     else { 
       if(commands.find(program_name) != commands.end()){ std::cout << program_name << " is a shell builtin" << std::endl; }
       else{ 
