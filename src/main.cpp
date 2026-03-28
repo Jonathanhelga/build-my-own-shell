@@ -31,7 +31,7 @@ int main(){
         else if(program_name == "pwd") { 
           char buffer[1024];
           char *p;
-          p = getcwd(buffer, sizeof(buffer));
+          p = getcwd(buffer, sizeof(buffer)); //get Current Working Directory
           std::cout << p << std::endl;
         }
         else{
