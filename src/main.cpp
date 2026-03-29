@@ -28,7 +28,10 @@ std::vector <std::string> tokenize(const std::string &input){
     }
     else if(c == '\\'){
       i++;
-      if(input[i] == '\\') {current += input[i++]; }
+      if(input[i] == '\\') {
+        current += input[i]; 
+        i++;
+      }
       current += input[i];
       i++;
     }
