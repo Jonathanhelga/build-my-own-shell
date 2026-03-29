@@ -26,6 +26,10 @@ std::vector <std::string> tokenize(const std::string &input){
       }
       if(i < input.size()) i++; // skip closing '
     }
+    else if(c == '\\'){
+      i++;
+      current += c;
+    }
     else if (c == ' ' || c == '\t'){
       if(!current.empty()){
         tokens.push_back(current);
