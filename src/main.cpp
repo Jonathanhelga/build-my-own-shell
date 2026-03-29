@@ -24,26 +24,25 @@ std::vector <std::string> tokenize(const std::string &input){
         current += input[i];
         i++;
       }
-      // if(i < input.size()) i++; // skip closing '
+      if(i < input.size()) i++; // skip closing '
     }
     else if(c == '\\'){
       i++;
       if(input[i] == '\\') {current += input[i++]; }
       current += input[i];
-      // i++;
+      i++;
     }
     else if (c == ' ' || c == '\t'){
       if(!current.empty()){
         tokens.push_back(current);
         current.clear();
       }
-      // i++;
+      i++;
     }
     else{
       current += c;
-      // i++;
+      i++;
     }
-    i++;
   }
   if(!current.empty()){ tokens.push_back(current); }
   return tokens;
