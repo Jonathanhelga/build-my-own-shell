@@ -30,6 +30,7 @@ std::vector <std::string> tokenize(const std::string &input){
       i++;
       if(input[i] == '\\') {i++;}
       current += input[i];
+      i++;
     }
     else if (c == ' ' || c == '\t'){
       if(!current.empty()){
