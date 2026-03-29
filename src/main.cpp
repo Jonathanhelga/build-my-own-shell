@@ -55,7 +55,7 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
       i++;
     }
     else if (c == ' ' || c == '\t'){
-      if(current == ">"){ is_redirect_exists = true; }
+      if(current == ">" || current == "1>"){ is_redirect_exists = true; }
       if(!current.empty()){
         tokens.push_back(current);
         current.clear();
@@ -106,6 +106,7 @@ int main(){
             output_text << args[i] << ' ';
             // std::cout << args[i] << ' ';
           }
+          output_text << '\n';
           // std::cout << '\n';
         }
         else if(program_name == "pwd") { 
