@@ -84,6 +84,7 @@ int main(){
         auto tokens = tokenize(input, is_redirect_exists);
         if (tokens.empty()) continue;
         std::ostringstream output_text;
+        bool output_handled = false;
         std::string program_name = tokens[0];
         std::vector<std::string> args(tokens.begin() + 1, tokens.end());
 
@@ -204,6 +205,7 @@ int main(){
                         }else if(pid > 0){
                             int status;
                             waitpid(pid, &status, 0);
+                            output_handled = true;
                         }
                     }
                   }else{ 
@@ -218,11 +220,13 @@ int main(){
             }
         }
         
-        if (is_redirect_exists) {
-            std::ofstream file(redirect_file);
-            file << output_text.str();
-        } else {
-            std::cout << output_text.str();
+        if (!output_handled) {
+            if (is_redirect_exists) {
+                std::ofstream file(redirect_file);
+                file << output_text.str();
+            } else {
+                std::cout << output_text.str();
+            }
         }
     }
 }
