@@ -8,6 +8,7 @@
 #include <vector>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 namespace fs = std::filesystem;
 // g++ -std=c++17 -o shell src/main.cpp
@@ -144,11 +145,9 @@ int main(){
         else{
             if(args.empty()){ 
               output_text << program_name << ": not found" << std::endl; 
-              // std::cout << program_name << ": not found" << std::endl; 
             }
             else if(commands.find(args[0]) != commands.end()){ 
               output_text << args[0] << " is a shell builtin" << std::endl; 
-              // std::cout << args[0] << " is a shell builtin" << std::endl; 
             }
             else{
               char *path_env = std::getenv("PATH");
@@ -189,6 +188,11 @@ int main(){
                     else{
                         pid_t pid = fork();
                         if(pid == 0){
+                            if(!redirect_file.empty()){
+                                int fd = open(redirect_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                                dup2(fd, STDOUT_FILENO);  // replace stdout with the file
+                                close(fd);
+                            }
                             std::vector<char *> argv;
                             argv.push_back((char *)program_name.c_str());
                             for(auto &a : args){
