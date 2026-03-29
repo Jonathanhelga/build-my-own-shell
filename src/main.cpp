@@ -106,7 +106,6 @@ int main(){
             output_text << args[i] << ' ';
             // std::cout << args[i] << ' ';
           }
-          output_text << '\n';
           // std::cout << '\n';
         }
         else if(program_name == "pwd") { 
