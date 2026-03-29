@@ -214,7 +214,6 @@ int main(){
             }
         }
         
-        
         if (is_redirect_exists) {
             std::ofstream file(redirect_file);
             file << output_text.str();
