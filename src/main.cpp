@@ -123,7 +123,7 @@ int main(){
               std::cerr << "cat: " << fileName << ": No such file or directory\n";
               continue;
             }
-            output_text << file.rdbuf() << std::endl;
+            output_text << file.rdbuf();
             // std::cout << file.rdbuf() << std::endl;
           }
         }
@@ -224,7 +224,6 @@ int main(){
             if (is_redirect_exists) {
                 std::ofstream file(redirect_file);
                 file << output_text.str();
-                is_redirect_exists = false;
             } else {
                 std::cout << output_text.str();
             }
