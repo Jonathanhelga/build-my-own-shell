@@ -17,7 +17,15 @@ std::vector <std::string> tokenize(const std::string &input){
   size_t i = 0;
   while(i < input.size()){
     char c = input[i];
-    if(c == '\''){
+    if( c== '\"'){
+      i++;
+      while(i < input.size() && input[i] != '\"'){
+        current += input[i];
+        i++;
+      }
+      if(i < input.size()) i++; // skip closing '
+    }
+    else if(c == '\''){
       i++;
       while(i < input.size() && input[i] != '\''){
         current += input[i];
