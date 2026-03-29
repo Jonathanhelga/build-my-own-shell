@@ -11,6 +11,25 @@
 
 namespace fs = std::filesystem;
 // g++ -std=c++17 -o shell src/main.cpp
+
+// Returns true if the backslash was consumed (caller should skip normal char processing).
+bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current){
+  if(quoteChar == '\"'){
+    i++; // skip the '\'
+    if(i < input.size()){
+      char next = input[i];
+      if(next == '\\' || next == '"' || next == '$' || next == '`' || next == '\n'){
+        current += next;
+      } else {
+        current += '\\';
+        current += next;
+      }
+      i++;
+    }
+    return true;
+  }
+  return false; 
+}
 std::vector <std::string> tokenize(const std::string &input){
   std::vector <std::string> tokens;
   std::string current;
@@ -21,6 +40,9 @@ std::vector <std::string> tokenize(const std::string &input){
       char character = c;
       i++;
       while(i < input.size() && (input[i] != character)){
+        if(input[i] == '\\') {
+          if(checkBackslash(c, input, i, current)) continue;
+        }
         current += input[i];
         i++;
       }
@@ -28,24 +50,22 @@ std::vector <std::string> tokenize(const std::string &input){
     }
     else if(c == '\\'){
       i++;
-      if(input[i] == '\\') {
-        current += input[i]; 
-        i++;
-      }
+      if(input[i] == '\\') {current += input[i++]; }
       current += input[i];
-      i++;
+      // i++;
     }
     else if (c == ' ' || c == '\t'){
       if(!current.empty()){
         tokens.push_back(current);
         current.clear();
       }
-      i++;
+      // i++;
     }
     else{
       current += c;
-      i++;
+      // i++;
     }
+    i++;
   }
   if(!current.empty()){ tokens.push_back(current); }
   return tokens;
