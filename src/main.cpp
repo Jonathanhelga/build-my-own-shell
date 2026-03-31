@@ -31,7 +31,7 @@ bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::st
   return false; 
 }
 
-std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists){
+std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists){
   std::vector <std::string> tokens;
   std::string current;
   size_t i = 0;
@@ -58,6 +58,7 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
     else if (c == ' ' || c == '\t'){
       if(current == ">" || current == "1>"){ is_redirect_exists = true; }
       else if(current == "2>") { is_redirect_error_exists = true; }
+      else if(current == ">>"){ is_operator_appends_exists = true; }
 
       if(!current.empty()){
         tokens.push_back(current);
@@ -85,7 +86,8 @@ int main(){
 
         bool is_redirect_exists = false;
         bool is_redirect_error_exists = false;
-        auto tokens = tokenize(input, is_redirect_exists, is_redirect_error_exists);
+        bool is_operator_appends_exists = false;
+        auto tokens = tokenize(input, is_redirect_exists, is_redirect_error_exists, is_operator_appends_exists);
         if (tokens.empty()) continue;
 
         std::ostringstream output_text;
@@ -96,9 +98,9 @@ int main(){
         std::vector<std::string> args(tokens.begin() + 1, tokens.end());
 
         std::string redirect_file;
-        if (is_redirect_exists || is_redirect_error_exists) {
+        if (is_redirect_exists || is_redirect_error_exists || is_operator_appends_exists) {
             for (size_t i = 0; i < args.size(); i++) {
-                if ((args[i] == ">" || args[i] == "1>" || args[i] == "2>") && i + 1 < args.size()) {
+                if ((args[i] == ">" || args[i] == "1>" || args[i] == "2>" || args[i] == ">>") && i + 1 < args.size()) {
                     redirect_file = args[i + 1];
                     args.erase(args.begin() + i, args.begin() + i + 2);
                     break;
@@ -230,6 +232,11 @@ int main(){
                 std::ofstream file(redirect_file);
                 file << output_error_text.str();
                 std::cout << output_text.str();
+            }
+            else if(is_operator_appends_exists){
+                std::ofstream file(redirect_file, std::ios::app); 
+                file << output_text.str();
+                std::cerr << output_error_text.str();
             }
             else {
                 std::cout << output_text.str();
