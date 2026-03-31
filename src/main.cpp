@@ -191,11 +191,8 @@ int main(){
                         if(pid == 0){
                             if(!redirect_file.empty()){
                                 int fd = open(redirect_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                                if(is_redirect_error_exists){
-                                    dup2(fd, STDERR_FILENO);
-                                } else {
-                                    dup2(fd, STDOUT_FILENO);
-                                }
+                                if(is_redirect_error_exists){ dup2(fd, STDERR_FILENO); } 
+                                else { dup2(fd, STDOUT_FILENO); }
                                 close(fd);
                             }
                             std::vector<char *> argv;
@@ -225,7 +222,7 @@ int main(){
               }
             }
         }
-        
+        if(output_error_text.str().empty()){is_redirect_error_exists = false;}
         if (!output_handled) {
             if (is_redirect_exists) {
                 std::ofstream file(redirect_file);
