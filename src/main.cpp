@@ -30,6 +30,7 @@ bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::st
   }
   return false; 
 }
+
 std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists){
   std::vector <std::string> tokens;
   std::string current;
@@ -189,8 +190,12 @@ int main(){
                         pid_t pid = fork();
                         if(pid == 0){
                             if(!redirect_file.empty()){
-                                int fd = open(redirect_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644); 
-                                dup2(fd, STDOUT_FILENO);  // replace stdout with the file (Output Redirection)
+                                int fd = open(redirect_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                                if(is_redirect_error_exists){
+                                    dup2(fd, STDERR_FILENO);
+                                } else {
+                                    dup2(fd, STDOUT_FILENO);
+                                }
                                 close(fd);
                             }
                             std::vector<char *> argv;
