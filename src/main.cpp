@@ -93,6 +93,32 @@ char* builtin_completer(const char* text, int state) {
                 matches.push_back(cmd);
             }
         }
+        if(matches.size() < 1){
+          std::vector<std::string> builtouts;
+          char *path_env = std::getenv("PATH");                                                                            
+          if(path_env != nullptr){
+              std::string path_str = path_env;                                                                             
+              std::stringstream ss(path_str);
+              std::string dir;                                                                                             
+              while(std::getline(ss, dir, ':')){
+                  if(!fs::exists(dir)) continue;
+                  for(const auto &entry : fs::directory_iterator(dir)){                                                    
+                      if(!entry.is_regular_file()) continue;
+                      auto perms = entry.status().permissions();                                                           
+                      if((perms & fs::perms::owner_exec) != fs::perms::none ||
+                        (perms & fs::perms::group_exec) != fs::perms::none ||                                             
+                        (perms & fs::perms::others_exec) != fs::perms::none){                                             
+                          builtouts.push_back(entry.path().filename().string());
+                      }                                                                                                    
+                  }       
+              }                                                                                                            
+          }
+          for (const auto& exec : builtouts) {
+            if (exec.rfind(text, 0) == 0) {  // starts with text
+                matches.push_back(exec);
+            }
+          }
+        }
     }
 
     if (match_index < matches.size()) {
