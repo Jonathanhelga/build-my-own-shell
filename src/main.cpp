@@ -237,23 +237,23 @@ int main(){
                     file << output_error_text.str();
                     std::cout << output_text.str();
                 }
-            //     if (is_redirect_exists) {
-            //         file << output_text.str();
-            //         std::cerr << output_error_text.str();
-            //     }
-            //     else if(is_redirect_error_exists){
-            //         file << output_error_text.str();
-            //         std::cout << output_text.str();
-            //     }
-            //     else if(is_operator_appends_exists){
-            //         file << output_text.str();
-            //         std::cerr << output_error_text.str();
-            //     }
-            //     else if(is_operator_appends_error_exists){
-            //         file << output_error_text.str();
-            //         std::cout << output_text.str();
-            //     }
-            // }
+                // if (is_redirect_exists) {
+                //     file << output_text.str();
+                //     std::cerr << output_error_text.str();
+                // }
+                // else if(is_redirect_error_exists){
+                //     file << output_error_text.str();
+                //     std::cout << output_text.str();
+                // }
+                // else if(is_operator_appends_exists){
+                //     file << output_text.str();
+                //     std::cerr << output_error_text.str();
+                // }
+                // else if(is_operator_appends_error_exists){
+                //     file << output_error_text.str();
+                //     std::cout << output_text.str();
+                // }
+            }
             else {
                 std::cout << output_text.str();
                 std::cerr << output_error_text.str();
