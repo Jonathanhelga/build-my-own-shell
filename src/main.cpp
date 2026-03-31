@@ -60,6 +60,7 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
       else if(current == "2>") { is_redirect_error_exists = true; }
       else if(current == ">>" || current == "1>>"){ is_operator_appends_exists = true; }
       else if(current == "2>>") { is_operator_appends_error_exists = true; }
+
       if(!current.empty()){
         tokens.push_back(current);
         current.clear();
@@ -99,7 +100,7 @@ int main(){
         std::vector<std::string> args(tokens.begin() + 1, tokens.end());
 
         std::string redirect_file;
-        if (is_redirect_exists || is_redirect_error_exists || is_operator_appends_exists) {
+        if (is_redirect_exists || is_redirect_error_exists || is_operator_appends_exists || is_operator_appends_error_exists) {
             for (size_t i = 0; i < args.size(); i++) {
                 if ((args[i] == ">" || args[i] == "1>" || args[i] == "2>" || args[i] == ">>" || args[i] == "1>>" || args[i] == "2>>") && i + 1 < args.size()) {
                     redirect_file = args[i + 1];
