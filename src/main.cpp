@@ -101,7 +101,7 @@ int main(){
         std::string redirect_file;
         if (is_redirect_exists || is_redirect_error_exists || is_operator_appends_exists) {
             for (size_t i = 0; i < args.size(); i++) {
-                if ((args[i] == ">" || args[i] == "1>" || args[i] == "2>" || args[i] == ">>" || args[i] == "1>>") && i + 1 < args.size()) {
+                if ((args[i] == ">" || args[i] == "1>" || args[i] == "2>" || args[i] == ">>" || args[i] == "1>>" || args[i] == "2>>") && i + 1 < args.size()) {
                     redirect_file = args[i + 1];
                     args.erase(args.begin() + i, args.begin() + i + 2);
                     break;
