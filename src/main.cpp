@@ -14,6 +14,7 @@
 
 namespace fs = std::filesystem;
 // g++ -std=c++17 -o shell src/main.cpp
+// g++ -std=c++17 -o shell src/main.cpp -lreadline
 
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current){
   if(quoteChar == '\"'){
@@ -77,7 +78,9 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
   if(!current.empty()){ tokens.push_back(current); }
   return tokens;
 }
+
 char* builtin_completer(const char* text, int state) {
+
     static std::vector<std::string> matches;
     static size_t match_index;
 
