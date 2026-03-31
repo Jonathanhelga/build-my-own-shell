@@ -222,18 +222,20 @@ int main(){
               }
             }
         }
-        if(output_error_text.str().empty()){is_redirect_error_exists = false;}
         if (!output_handled) {
             if (is_redirect_exists) {
                 std::ofstream file(redirect_file);
                 file << output_text.str();
+                std::cerr << output_error_text.str();
             }
             else if(is_redirect_error_exists){
                 std::ofstream file(redirect_file);
                 file << output_error_text.str();
+                std::cout << output_text.str();
             }
             else {
                 std::cout << output_text.str();
+                std::cerr << output_error_text.str();
             }
         }
     }
