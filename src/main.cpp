@@ -224,20 +224,24 @@ int main(){
             }
         }
         if (!output_handled) {
-            if (is_redirect_exists) {
-                std::ofstream file(redirect_file);
-                file << output_text.str();
-                std::cerr << output_error_text.str();
-            }
-            else if(is_redirect_error_exists){
-                std::ofstream file(redirect_file);
-                file << output_error_text.str();
-                std::cout << output_text.str();
-            }
-            else if(is_operator_appends_exists){
-                std::ofstream file(redirect_file, std::ios::app); 
-                file << output_text.str();
-                std::cerr << output_error_text.str();
+            if(is_redirect_exists || is_redirect_error_exists ||  is_operator_appends_exists){
+                auto flags = is_operator_appends_exists ? std::ios::app : std::ios::trunc;
+                std::ofstream file(redirect_file, flags);
+                if (is_redirect_exists) {
+                  // std::ofstream file(redirect_file, std::ios::trunc);
+                  file << output_text.str();
+                  std::cerr << output_error_text.str();
+                }
+                else if(is_redirect_error_exists){
+                    // std::ofstream file(redirect_file, std::ios::trunc);
+                    file << output_error_text.str();
+                    std::cout << output_text.str();
+                }
+                else if(is_operator_appends_exists){
+                    // std::ofstream file(redirect_file, std::ios::app); 
+                    file << output_text.str();
+                    std::cerr << output_error_text.str();
+                }
             }
             else {
                 std::cout << output_text.str();
