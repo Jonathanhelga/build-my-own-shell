@@ -197,7 +197,7 @@ int main(){
                             if(!redirect_file.empty()){
                                 int flags = O_WRONLY | O_CREAT | (is_operator_appends_exists || is_operator_appends_error_exists? O_APPEND : O_TRUNC);
                                 int fd = open(redirect_file.c_str(), flags, 0644);
-                                if(is_redirect_error_exists){ dup2(fd, STDERR_FILENO); } 
+                                if(is_redirect_error_exists || is_operator_appends_error_exists){ dup2(fd, STDERR_FILENO); } 
                                 else { dup2(fd, STDOUT_FILENO); }
                                 close(fd);
                             }
