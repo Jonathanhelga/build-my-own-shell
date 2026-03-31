@@ -77,16 +77,42 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
   if(!current.empty()){ tokens.push_back(current); }
   return tokens;
 }
+char* builtin_completer(const char* text, int state) {
+    static std::vector<std::string> matches;
+    static size_t match_index;
+
+    if (state == 0) {  // first call — build the matches list
+        matches.clear();
+        match_index = 0;
+        std::vector<std::string> builtins = {"echo", "exit", "type", "pwd", "cd"};
+        for (const auto& cmd : builtins) {
+            if (cmd.rfind(text, 0) == 0) {  // starts with text
+                matches.push_back(cmd);
+            }
+        }
+    }
+
+    if (match_index < matches.size()) {
+        return strdup(matches[match_index++].c_str());
+    }
+    return nullptr;
+}
+
+char** shell_completer(const char* text, int start, int end) {
+    rl_attempted_completion_over = 1;  // don't fall back to file completion
+    return rl_completion_matches(text, builtin_completer);
+}
 
 int main(){
-    rl_bind_key('\t', rl_complete);
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
+    rl_attempted_completion_function = shell_completer;
     while(true){
-        std::cout << "$ ";
-        std::string input;
+        char *line = readline("$ ");
+        if (!line) break;
+        std::string input(line);
+        free(line);
         std::set<std::string> commands = {"exit", "echo", "type", "pwd", "cd"};
-        std::getline(std::cin, input);
         
         bool is_redirect_exists = false;
         bool is_redirect_error_exists = false;
@@ -113,6 +139,7 @@ int main(){
             }
         }
 
+        if(program_name == "exit"){ break; }
         else if(program_name == "echo") {
           for(size_t i = 0; i < args.size(); i++){ output_text << args[i] << ' '; }
           output_text << '\n';
