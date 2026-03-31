@@ -223,16 +223,15 @@ int main(){
                   std::stringstream ss(path_str);
                   std::vector <std::string> path_dirs;
                   std::string dir;
-                  
-                  while(std::getline(ss, dir, ':')){ path_dirs.push_back(dir); }
-                  std::string searchingWord;
 
+                  std::string searchingWord;
                   if(program_name == "type"){ searchingWord = args[0]; }
                   else{ searchingWord = program_name; }
 
-                  for(const auto &dir : path_dirs){
-                      fs::path full_path = fs::path(dir) / searchingWord;
-                      if(fs::exists(full_path)){
+                  while(std::getline(ss, dir, ':')){
+                    if(!fs::exists(dir)) continue;
+                    fs::path full_path = fs::path(dir) / searchingWord;
+                    if(fs::exists(full_path)){
                           auto perms = fs::status(full_path).permissions();
                           if((perms & fs::perms::owner_exec) != fs::perms::none ||
                              (perms & fs::perms::group_exec) != fs::perms::none ||
@@ -241,8 +240,24 @@ int main(){
                               found = true;
                               break;
                           }
-                      }
+                    }
                   }
+                  // while(std::getline(ss, dir, ':')){ path_dirs.push_back(dir); }
+                  
+
+                  // for(const auto &dir : path_dirs){
+                  //     fs::path full_path = fs::path(dir) / searchingWord;
+                  //     if(fs::exists(full_path)){
+                  //         auto perms = fs::status(full_path).permissions();
+                  //         if((perms & fs::perms::owner_exec) != fs::perms::none ||
+                  //            (perms & fs::perms::group_exec) != fs::perms::none ||
+                  //            (perms & fs::perms::others_exec) != fs::perms::none){
+                  //             exec_path = full_path.string();
+                  //             found = true;
+                  //             break;
+                  //         }
+                  //     }
+                  // }
                   if(found){
                     if(program_name == "type"){ 
                       output_text << searchingWord << " is " << exec_path << std::endl; 
