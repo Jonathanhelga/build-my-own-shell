@@ -221,7 +221,7 @@ int main(){
               if(path_env != nullptr){
                   std::string path_str = path_env; //same as std::string path_str(path_env);
                   std::stringstream ss(path_str);
-                  std::vector <std::string> path_dirs;
+                  // std::vector <std::string> path_dirs;
                   std::string dir;
 
                   std::string searchingWord;
@@ -243,8 +243,6 @@ int main(){
                     }
                   }
                   // while(std::getline(ss, dir, ':')){ path_dirs.push_back(dir); }
-                  
-
                   // for(const auto &dir : path_dirs){
                   //     fs::path full_path = fs::path(dir) / searchingWord;
                   //     if(fs::exists(full_path)){
