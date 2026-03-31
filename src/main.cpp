@@ -87,9 +87,11 @@ int main(){
         bool is_redirect_error_exists = false;
         auto tokens = tokenize(input, is_redirect_exists, is_redirect_error_exists);
         if (tokens.empty()) continue;
+
         std::ostringstream output_text;
         std::ostringstream output_error_text;
         bool output_handled = false;
+        
         std::string program_name = tokens[0];
         std::vector<std::string> args(tokens.begin() + 1, tokens.end());
 
@@ -211,14 +213,10 @@ int main(){
                     }
                   }else{ 
                     output_error_text << searchingWord << ": not found" << std::endl; 
-                    // output_text << searchingWord << ": not found" << std::endl; 
-                    // std::cout << searchingWord << ": not found" << std::endl; 
                   }
 
               }else{ 
                 output_error_text << program_name << ": not found" << std::endl; 
-                // output_text << program_name << ": not found" << std::endl; 
-                // std::cout << program_name << ": not found" << std::endl; 
               }
             }
         }
