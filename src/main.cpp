@@ -9,6 +9,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 namespace fs = std::filesystem;
 // g++ -std=c++17 -o shell src/main.cpp
@@ -77,6 +79,7 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
 }
 
 int main(){
+    rl_bind_key('\t', rl_complete);
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
     while(true){
@@ -84,7 +87,7 @@ int main(){
         std::string input;
         std::set<std::string> commands = {"exit", "echo", "type", "pwd", "cd"};
         std::getline(std::cin, input);
-
+        
         bool is_redirect_exists = false;
         bool is_redirect_error_exists = false;
         bool is_operator_appends_exists = false;
@@ -109,7 +112,7 @@ int main(){
                 }
             }
         }
-        if(program_name == "exit"){  break;  } 
+
         else if(program_name == "echo") {
           for(size_t i = 0; i < args.size(); i++){ output_text << args[i] << ' '; }
           output_text << '\n';
@@ -134,19 +137,16 @@ int main(){
         else if(program_name == "cd"){
           if(args.size() > 1) {
             output_error_text << "cd: too many arguments\n";
-            // std::cerr << "cd: too many arguments\n";
           }
           else if(args[0] == "~" || args.empty()){
             const char *home = std::getenv("HOME");
             if(home && chdir(home) != 0){
               output_error_text << "cd: " << home << ": No such file or directory\n";
-              // std::cerr << "cd: " << home << ": No such file or directory\n";
             }
           }
           else{
             if(chdir(args[0].c_str()) != 0){
               output_error_text << "cd: " << args[0] << ": No such file or directory\n";
-              // std::cerr << "cd: " << args[0] << ": No such file or directory\n";
             }
           }
         }
@@ -190,7 +190,6 @@ int main(){
                   if(found){
                     if(program_name == "type"){ 
                       output_text << searchingWord << " is " << exec_path << std::endl; 
-                      // std::cout << searchingWord << " is " << exec_path << std::endl; 
                     }
                     else{
                         pid_t pid = fork();
@@ -202,17 +201,18 @@ int main(){
                                 else { dup2(fd, STDOUT_FILENO); }
                                 close(fd);
                             }
+
                             std::vector<char *> argv;
                             argv.push_back((char *)program_name.c_str());
-                            for(auto &a : args){
-                                argv.push_back((char *)a.c_str());
-                            }
+                            for(auto &a : args){ argv.push_back((char *)a.c_str()); }
                             argv.push_back(nullptr);
+
                             execv(exec_path.c_str(), argv.data());
                             exit(1);
                         }else if(pid > 0){
                             int status;
                             waitpid(pid, &status, 0);
+
                             output_handled = true;
                         }
                     }
@@ -237,22 +237,6 @@ int main(){
                     file << output_error_text.str();
                     std::cout << output_text.str();
                 }
-                // if (is_redirect_exists) {
-                //     file << output_text.str();
-                //     std::cerr << output_error_text.str();
-                // }
-                // else if(is_redirect_error_exists){
-                //     file << output_error_text.str();
-                //     std::cout << output_text.str();
-                // }
-                // else if(is_operator_appends_exists){
-                //     file << output_text.str();
-                //     std::cerr << output_error_text.str();
-                // }
-                // else if(is_operator_appends_error_exists){
-                //     file << output_error_text.str();
-                //     std::cout << output_text.str();
-                // }
             }
             else {
                 std::cout << output_text.str();
