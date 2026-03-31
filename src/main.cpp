@@ -31,7 +31,7 @@ bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::st
   return false; 
 }
 
-std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists){
+std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists, bool &is_operator_appends_error_exists){
   std::vector <std::string> tokens;
   std::string current;
   size_t i = 0;
@@ -59,7 +59,7 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
       if(current == ">" || current == "1>"){ is_redirect_exists = true; }
       else if(current == "2>") { is_redirect_error_exists = true; }
       else if(current == ">>" || current == "1>>"){ is_operator_appends_exists = true; }
-
+      else if(current == "2>>") { is_operator_appends_error_exists = true; }
       if(!current.empty()){
         tokens.push_back(current);
         current.clear();
@@ -87,7 +87,8 @@ int main(){
         bool is_redirect_exists = false;
         bool is_redirect_error_exists = false;
         bool is_operator_appends_exists = false;
-        auto tokens = tokenize(input, is_redirect_exists, is_redirect_error_exists, is_operator_appends_exists);
+        bool is_operator_appends_error_exists = false;
+        auto tokens = tokenize(input, is_redirect_exists, is_redirect_error_exists, is_operator_appends_exists, is_operator_appends_error_exists);
         if (tokens.empty()) continue;
 
         std::ostringstream output_text;
@@ -224,23 +225,24 @@ int main(){
             }
         }
         if (!output_handled) {
-            if(is_redirect_exists || is_redirect_error_exists ||  is_operator_appends_exists){
-                auto flags = is_operator_appends_exists ? std::ios::app : std::ios::trunc;
+            if(is_redirect_exists || is_redirect_error_exists ||  is_operator_appends_exists || is_operator_appends_error_exists){
+                auto flags = is_operator_appends_exists || is_operator_appends_error_exists ? std::ios::app : std::ios::trunc;
                 std::ofstream file(redirect_file, flags);
                 if (is_redirect_exists) {
-                  // std::ofstream file(redirect_file, std::ios::trunc);
-                  file << output_text.str();
-                  std::cerr << output_error_text.str();
+                    file << output_text.str();
+                    std::cerr << output_error_text.str();
                 }
                 else if(is_redirect_error_exists){
-                    // std::ofstream file(redirect_file, std::ios::trunc);
                     file << output_error_text.str();
                     std::cout << output_text.str();
                 }
                 else if(is_operator_appends_exists){
-                    // std::ofstream file(redirect_file, std::ios::app); 
                     file << output_text.str();
                     std::cerr << output_error_text.str();
+                }
+                else if(is_operator_appends_error_exists){
+                    file << output_error_text.str();
+                    std::cout << output_text.str();
                 }
             }
             else {
