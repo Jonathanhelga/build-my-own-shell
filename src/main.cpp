@@ -128,8 +128,11 @@ char* builtin_completer(const char* text, int state) {
 }
 
 char** shell_completer(const char* text, int start, int end) {
-    rl_attempted_completion_over = 1;  // don't fall back to file completion
-    return rl_completion_matches(text, builtin_completer);
+    if(start == 0){
+      rl_attempted_completion_over = 1;  // don't fall back to file completion
+      return rl_completion_matches(text, builtin_completer);
+    }
+    return nullptr;
 }
 
 int main(){
