@@ -34,7 +34,7 @@ bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::st
   return false; 
 }
 
-std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists, bool &is_operator_appends_error_exists){
+std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists, bool &is_operator_appends_error_exists, int &pipe_index){
   std::vector <std::string> tokens;
   std::string current;
   size_t i = 0;
@@ -59,6 +59,7 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
       i++;
     }
     else if (c == ' ' || c == '\t'){
+      if(current == "|"){  pipe_index = tokens.size(); }
       if(current == ">" || current == "1>"){ is_redirect_exists = true; }
       else if(current == "2>") { is_redirect_error_exists = true; }
       else if(current == ">>" || current == "1>>"){ is_operator_appends_exists = true; }
@@ -106,8 +107,8 @@ char* builtin_completer(const char* text, int state) {
                       if(!entry.is_regular_file()) continue;
                       auto perms = entry.status().permissions();                                                           
                       if((perms & fs::perms::owner_exec) != fs::perms::none ||
-                        (perms & fs::perms::group_exec) != fs::perms::none ||                                             
-                        (perms & fs::perms::others_exec) != fs::perms::none){                                             
+                         (perms & fs::perms::group_exec) != fs::perms::none ||                                             
+                         (perms & fs::perms::others_exec) != fs::perms::none){                                             
                           builtouts.push_back(entry.path().filename().string());
                       }                                                                                                    
                   }       
@@ -135,6 +136,27 @@ char** shell_completer(const char* text, int start, int end) {
     return nullptr;
 }
 
+std::string findExecPath(const std::string &program_name){
+    char *path_env = std::getenv("PATH");
+    if(!path_env) return "";
+    std::string path_str(path_env);                                                                                                  
+    std::stringstream ss(path_str);
+    std::string dir;
+
+    while(std::getline(ss, dir, ':')){
+      if(!fs::exists(dir)) continue;
+      fs::path full_path = fs::path(dir) / program_name;
+      if (fs::exists(full_path)) {                                                                                                  
+          auto perms = fs::status(full_path).permissions();
+          if ((perms & fs::perms::owner_exec) != fs::perms::none ||                                                                 
+              (perms & fs::perms::group_exec) != fs::perms::none ||                                                                 
+              (perms & fs::perms::others_exec) != fs::perms::none) {
+              return full_path.string();                                                                                            
+          }                                                                                                                       
+      }   
+    }
+    return "";
+}
 int main(){
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
@@ -150,9 +172,52 @@ int main(){
         bool is_redirect_error_exists = false;
         bool is_operator_appends_exists = false;
         bool is_operator_appends_error_exists = false;
-        auto tokens = tokenize(input, is_redirect_exists, is_redirect_error_exists, is_operator_appends_exists, is_operator_appends_error_exists);
+        int pipe_index = -1;
+        auto tokens = tokenize(input, is_redirect_exists, is_redirect_error_exists, is_operator_appends_exists, is_operator_appends_error_exists, pipe_index);
         if (tokens.empty()) continue;
+        
+        std::vector<std::string> left_tokens;
+        std::vector<std::string> right_tokens;
+        if(pipe_index != -1){
+            left_tokens = std::vector<std::string>(tokens.begin(), tokens.begin() + pipe_index);
+            right_tokens = std::vector<std::string>(tokens.begin() + pipe_index + 1, tokens.end());
+            std::string left_exec_path  = findExecPath(left_tokens[0]);                                                                       
+            std::string right_exec_path = findExecPath(right_tokens[0]);  
+            if (left_exec_path.empty() || right_exec_path.empty()) {                                                                          
+                std::cerr << "command not found\n";
+                continue;                                                                                                                     
+            } 
+            std::vector<char *> left_argv;
+            std::vector<char *> right_argv;
+            for(auto &a : left_tokens){ left_argv.push_back((char *)a.c_str()); }
+            for(auto &a : right_tokens){ right_argv.push_back((char *)a.c_str()); }
+            left_argv.push_back(nullptr);
+            right_argv.push_back(nullptr);
+            int pfds[2];
+            pipe(pfds);
+            pid_t left_pid = fork();
+            if (left_pid == 0) {
+                close(pfds[0]);
+                dup2(pfds[1], STDOUT_FILENO);
+                close(pfds[1]);
+                execv(left_exec_path.c_str(), left_argv.data());
+                exit(1);
+            }
+            pid_t right_pid = fork();
+            if (right_pid == 0) {
+                close(pfds[1]);
+                dup2(pfds[0], STDIN_FILENO);
+                close(pfds[0]);
+                execv(right_exec_path.c_str(), right_argv.data());
+                exit(1);
+            }
+            close(pfds[0]);
+            close(pfds[1]);
+            waitpid(left_pid, nullptr, 0);
+            waitpid(right_pid, nullptr, 0);
+            continue;
 
+        }
         std::ostringstream output_text;
         std::ostringstream output_error_text;
         bool output_handled = false;
@@ -187,7 +252,6 @@ int main(){
             std::ifstream file(fileName);
             if(!file){
               output_error_text << "cat: " << fileName << ": No such file or directory\n";
-              // std::cerr << "cat: " << fileName << ": No such file or directory\n";
               continue;
             }
             output_text << file.rdbuf();
@@ -220,17 +284,17 @@ int main(){
               char *path_env = std::getenv("PATH");
               std::string exec_path;
               bool found = false;
-
+              
               if(path_env != nullptr){
                   std::string path_str = path_env; //same as std::string path_str(path_env);
                   std::stringstream ss(path_str);
-                  // std::vector <std::string> path_dirs;
                   std::string dir;
 
                   std::string searchingWord;
                   if(program_name == "type"){ searchingWord = args[0]; }
                   else{ searchingWord = program_name; }
-
+                  // exec_path = left_exec_path(searchingWord);
+                  // if(exec_path != ""){ found = true; }
                   while(std::getline(ss, dir, ':')){
                     if(!fs::exists(dir)) continue;
                     fs::path full_path = fs::path(dir) / searchingWord;
@@ -245,20 +309,6 @@ int main(){
                           }
                     }
                   }
-                  // while(std::getline(ss, dir, ':')){ path_dirs.push_back(dir); }
-                  // for(const auto &dir : path_dirs){
-                  //     fs::path full_path = fs::path(dir) / searchingWord;
-                  //     if(fs::exists(full_path)){
-                  //         auto perms = fs::status(full_path).permissions();
-                  //         if((perms & fs::perms::owner_exec) != fs::perms::none ||
-                  //            (perms & fs::perms::group_exec) != fs::perms::none ||
-                  //            (perms & fs::perms::others_exec) != fs::perms::none){
-                  //             exec_path = full_path.string();
-                  //             found = true;
-                  //             break;
-                  //         }
-                  //     }
-                  // }
                   if(found){
                     if(program_name == "type"){ 
                       output_text << searchingWord << " is " << exec_path << std::endl; 
