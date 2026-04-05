@@ -216,7 +216,6 @@ int main(){
             waitpid(left_pid, nullptr, 0);
             waitpid(right_pid, nullptr, 0);
             continue;
-
         }
         std::ostringstream output_text;
         std::ostringstream output_error_text;
