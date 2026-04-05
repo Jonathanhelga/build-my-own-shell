@@ -15,11 +15,7 @@
 namespace fs = std::filesystem;
 // g++ -std=c++17 -o shell src/main.cpp
 // g++ -std=c++17 -o shell src/main.cpp -lreadline
-//  git checkout main
-//  git reset --hard master
-//  git push origin main --force
-// helloo from main
-
+//hello
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current){
   if(quoteChar == '\"'){
     i++; // skip the '\'
