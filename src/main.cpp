@@ -15,7 +15,7 @@
 namespace fs = std::filesystem;
 // g++ -std=c++17 -o shell src/main.cpp
 // g++ -std=c++17 -o shell src/main.cpp -lreadline
-
+//hello
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current){
   if(quoteChar == '\"'){
     i++; // skip the '\'
