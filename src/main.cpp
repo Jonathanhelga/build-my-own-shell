@@ -104,7 +104,7 @@ void execSegment(const std::vector<std::string> &seg) {
     if (seg.empty()) exit(0);
     const std::string &cmd = seg[0];
     std::vector<std::string> args(seg.begin() + 1, seg.end());
-    std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd"};
+    std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history"};
 
     if (cmd == "echo") {
         for (size_t i = 0; i < args.size(); i++) {
@@ -270,7 +270,7 @@ int main(){
         if (!line) break;
         std::string input(line);
         free(line);
-        std::set<std::string> commands = {"exit", "echo", "type", "pwd", "cd"};
+        std::set<std::string> commands = {"exit", "echo", "type", "pwd", "cd", "history"};
         
         bool is_redirect_exists = false;
         bool is_redirect_error_exists = false;
