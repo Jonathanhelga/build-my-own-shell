@@ -16,6 +16,7 @@ namespace fs = std::filesystem;
 // g++ -std=c++17 -o shell src/main.cpp
 // g++ -std=c++17 -o shell src/main.cpp -lreadline
 //hello
+const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history"};
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current){
   if(quoteChar == '\"'){
     i++; // skip the '\'
@@ -100,11 +101,11 @@ std::vector<std::vector<std::string>> splitByPipe(const std::vector<std::string>
 
 // Execute one pipeline segment in the current process (must be called inside a fork'd child).
 // Handles both built-in and external commands.
+
 void execSegment(const std::vector<std::string> &seg) {
     if (seg.empty()) exit(0);
     const std::string &cmd = seg[0];
     std::vector<std::string> args(seg.begin() + 1, seg.end());
-    std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history"};
 
     if (cmd == "echo") {
         for (size_t i = 0; i < args.size(); i++) {
@@ -191,7 +192,6 @@ char* builtin_completer(const char* text, int state) {
     if (state == 0) {  // first call — build the matches list
         matches.clear();
         match_index = 0;
-        std::vector<std::string> builtins = {"echo", "exit", "type", "pwd", "cd"};
         for (const auto& cmd : builtins) {
             if (cmd.rfind(text, 0) == 0) {  // starts with text
                 matches.push_back(cmd);
@@ -270,8 +270,6 @@ int main(){
         if (!line) break;
         std::string input(line);
         free(line);
-        std::set<std::string> commands = {"exit", "echo", "type", "pwd", "cd", "history"};
-        
         bool is_redirect_exists = false;
         bool is_redirect_error_exists = false;
         bool is_operator_appends_exists = false;
@@ -345,62 +343,51 @@ int main(){
             if(args.empty()){ 
               output_text << program_name << ": not found" << std::endl; 
             }
-            else if(commands.find(args[0]) != commands.end()){ 
+            else if(builtins.find(args[0]) != builtins.end()){
               output_text << args[0] << " is a shell builtin" << std::endl; 
             }
             else{
               char *path_env = std::getenv("PATH");
               std::string exec_path;
               bool found = false;
-              
-              if(path_env != nullptr){
-                  std::string path_str = path_env; //same as std::string path_str(path_env);
-                  std::stringstream ss(path_str);
-                  std::string dir;
+              std::string searchingWord;
+              if(program_name == "type"){ searchingWord = args[0]; }
+              else{ searchingWord = program_name; }
 
-                  std::string searchingWord;
-                  if(program_name == "type"){ searchingWord = args[0]; }
-                  else{ searchingWord = program_name; }
+              exec_path = findExecPath(searchingWord);
+              if(!exec_path.empty()){ found = true; }
 
-                  exec_path = findExecPath(searchingWord);
-                  if(!exec_path.empty()){ found = true; }
-
-                  if(found){
-                    if(program_name == "type"){ 
-                      output_text << searchingWord << " is " << exec_path << std::endl; 
-                    }
-                    else{
-                        pid_t pid = fork();
-                        if(pid == 0){
-                            if(!redirect_file.empty()){
-                                int flags = O_WRONLY | O_CREAT | (is_operator_appends_exists || is_operator_appends_error_exists? O_APPEND : O_TRUNC);
-                                int fd = open(redirect_file.c_str(), flags, 0644);
-                                if(is_redirect_error_exists || is_operator_appends_error_exists){ dup2(fd, STDERR_FILENO); } 
-                                else { dup2(fd, STDOUT_FILENO); }
-                                close(fd);
-                            }
-
-                            std::vector<char *> argv;
-                            argv.push_back((char *)program_name.c_str());
-                            for(auto &a : args){ argv.push_back((char *)a.c_str()); }
-                            argv.push_back(nullptr);
-
-                            execv(exec_path.c_str(), argv.data());
-                            exit(1);
-                        }else if(pid > 0){
-                            int status;
-                            waitpid(pid, &status, 0);
-
-                            output_handled = true;
+              if(found){
+                if(program_name == "type"){ 
+                  output_text << searchingWord << " is " << exec_path << std::endl; 
+                }
+                else{
+                    pid_t pid = fork();
+                    if(pid == 0){
+                        if(!redirect_file.empty()){
+                            int flags = O_WRONLY | O_CREAT | (is_operator_appends_exists || is_operator_appends_error_exists? O_APPEND : O_TRUNC);
+                            int fd = open(redirect_file.c_str(), flags, 0644);
+                            if(is_redirect_error_exists || is_operator_appends_error_exists){ dup2(fd, STDERR_FILENO); } 
+                            else { dup2(fd, STDOUT_FILENO); }
+                            close(fd);
                         }
-                    }
-                  }else{ 
-                    output_error_text << searchingWord << ": not found" << std::endl; 
-                  }
 
-              }else{ 
-                output_error_text << program_name << ": not found" << std::endl; 
-              }
+                        std::vector<char *> argv;
+                        argv.push_back((char *)program_name.c_str());
+                        for(auto &a : args){ argv.push_back((char *)a.c_str()); }
+                        argv.push_back(nullptr);
+
+                        execv(exec_path.c_str(), argv.data());
+                        exit(1);
+                    }else if(pid > 0){
+                        int status;
+                        waitpid(pid, &status, 0);
+                        output_handled = true;
+                    }
+                }
+                }else{ 
+                  output_error_text << searchingWord << ": not found" << std::endl; 
+                }
             }
         }
         if (!output_handled) {
