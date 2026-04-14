@@ -15,8 +15,9 @@
 namespace fs = std::filesystem;
 // g++ -std=c++17 -o shell src/main.cpp
 // g++ -std=c++17 -o shell src/main.cpp -lreadline
-//hello
+
 const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history"};
+
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current){
   if(quoteChar == '\"'){
     i++; // skip the '\'
@@ -80,10 +81,56 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
   return tokens;
 }
 
-// Forward declaration so execSegment can call findExecPath (defined below main completers)
-std::string findExecPath(const std::string &program_name);
+std::string findExecPath(const std::string &program_name){
+    char *path_env = std::getenv("PATH");
+    if(!path_env) return "";
+    std::string path_str(path_env);                                                                                                  
+    std::stringstream ss(path_str);
+    std::string dir;
 
-// Split a flat token list into segments separated by "|"
+    while(std::getline(ss, dir, ':')){
+      if(!fs::exists(dir)) continue;
+      fs::path full_path = fs::path(dir) / program_name;
+      if (fs::exists(full_path)) {                                                                                                  
+          auto perms = fs::status(full_path).permissions();
+          if ((perms & fs::perms::owner_exec) != fs::perms::none ||                                                                 
+              (perms & fs::perms::group_exec) != fs::perms::none ||                                                                 
+              (perms & fs::perms::others_exec) != fs::perms::none) {
+              return full_path.string();                                                                                            
+          }                                                                                                                       
+      }   
+    }
+    return "";
+}
+
+void runPipeline(const std::vector<std::vector<std::string>> &segments) {
+    int n = segments.size();
+    std::vector<std::array<int,2>> pipes(n - 1);
+    for (auto &p : pipes) pipe(p.data());
+
+    std::vector<pid_t> pids;
+    for (int i = 0; i < n; i++) {
+        pid_t pid = fork();
+        if (pid == 0) {
+            // Wire up stdin from the previous pipe
+            if (i > 0) dup2(pipes[i-1][0], STDIN_FILENO);
+            // Wire up stdout to the next pipe
+            if (i < n-1) dup2(pipes[i][1], STDOUT_FILENO);
+            // Close all pipe fds in the child
+            for (auto &p : pipes) { 
+                close(p[0]); 
+                close(p[1]); 
+            }
+            execSegment(segments[i]);
+            exit(1);
+        }
+        pids.push_back(pid);
+    }
+    // Parent closes all pipe ends so children can detect EOF
+    for (auto &p : pipes) { close(p[0]); close(p[1]); }
+    for (auto pid : pids) waitpid(pid, nullptr, 0);
+}
+
 std::vector<std::vector<std::string>> splitByPipe(const std::vector<std::string> &tokens) {
     std::vector<std::vector<std::string>> segments;
     std::vector<std::string> cur;
@@ -98,9 +145,6 @@ std::vector<std::vector<std::string>> splitByPipe(const std::vector<std::string>
     if (!cur.empty()) segments.push_back(cur);
     return segments;
 }
-
-// Execute one pipeline segment in the current process (must be called inside a fork'd child).
-// Handles both built-in and external commands.
 
 void execSegment(const std::vector<std::string> &seg) {
     if (seg.empty()) exit(0);
@@ -153,35 +197,6 @@ void execSegment(const std::vector<std::string> &seg) {
         execv(exec_path.c_str(), argv.data());
         exit(1);
     }
-}
-
-// Run multiple segments connected by pipes.
-void runPipeline(const std::vector<std::vector<std::string>> &segments) {
-    int n = segments.size();
-    std::vector<std::array<int,2>> pipes(n - 1);
-    for (auto &p : pipes) pipe(p.data());
-
-    std::vector<pid_t> pids;
-    for (int i = 0; i < n; i++) {
-        pid_t pid = fork();
-        if (pid == 0) {
-            // Wire up stdin from the previous pipe
-            if (i > 0) dup2(pipes[i-1][0], STDIN_FILENO);
-            // Wire up stdout to the next pipe
-            if (i < n-1) dup2(pipes[i][1], STDOUT_FILENO);
-            // Close all pipe fds in the child
-            for (auto &p : pipes) { 
-                close(p[0]); 
-                close(p[1]); 
-            }
-            execSegment(segments[i]);
-            exit(1);
-        }
-        pids.push_back(pid);
-    }
-    // Parent closes all pipe ends so children can detect EOF
-    for (auto &p : pipes) { close(p[0]); close(p[1]); }
-    for (auto pid : pids) waitpid(pid, nullptr, 0);
 }
 
 char* builtin_completer(const char* text, int state) {
@@ -237,28 +252,6 @@ char** shell_completer(const char* text, int start, int end) {
       return rl_completion_matches(text, builtin_completer);
     }
     return nullptr;
-}
-
-std::string findExecPath(const std::string &program_name){
-    char *path_env = std::getenv("PATH");
-    if(!path_env) return "";
-    std::string path_str(path_env);                                                                                                  
-    std::stringstream ss(path_str);
-    std::string dir;
-
-    while(std::getline(ss, dir, ':')){
-      if(!fs::exists(dir)) continue;
-      fs::path full_path = fs::path(dir) / program_name;
-      if (fs::exists(full_path)) {                                                                                                  
-          auto perms = fs::status(full_path).permissions();
-          if ((perms & fs::perms::owner_exec) != fs::perms::none ||                                                                 
-              (perms & fs::perms::group_exec) != fs::perms::none ||                                                                 
-              (perms & fs::perms::others_exec) != fs::perms::none) {
-              return full_path.string();                                                                                            
-          }                                                                                                                       
-      }   
-    }
-    return "";
 }
 
 int main(){
