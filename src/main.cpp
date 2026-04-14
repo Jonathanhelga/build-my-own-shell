@@ -262,6 +262,14 @@ char** shell_completer(const char* text, int start, int end) {
     return nullptr;
 }
 
+void storeCommandAsHistory(std::string input){
+    const char* home = std::getenv("HOME");
+    std::string history_path = std::string(home) + "/.shell_history";
+    std::ofstream history;
+    history.open(history_path, std::ios::app);
+    history << input << '\n';
+}
+
 int main(){
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
@@ -270,6 +278,7 @@ int main(){
         char *line = readline("$ ");
         if (!line) break;
         std::string input(line);
+        storeCommandAsHistory(input);
         free(line);
         bool is_redirect_exists = false;
         bool is_redirect_error_exists = false;
@@ -291,7 +300,7 @@ int main(){
 
         std::string program_name = tokens[0];
         std::vector<std::string> args(tokens.begin() + 1, tokens.end());
-        
+
         std::string redirect_file;
         if (is_redirect_exists || is_redirect_error_exists || is_operator_appends_exists || is_operator_appends_error_exists) {
             for (size_t i = 0; i < args.size(); i++) {
@@ -338,6 +347,16 @@ int main(){
             if(chdir(args[0].c_str()) != 0){
               output_error_text << "cd: " << args[0] << ": No such file or directory\n";
             }
+          }
+        }
+        else if(program_name == "history"){
+          const char* home = std::getenv("HOME");
+          std::string history_path = std::string(home) + "/.shell_history";
+          std::ifstream file(history_path);
+          std::string line;
+          int i = 1;
+          while(std::getline(file, line)) {
+              std::cout << "    " << i++ << "  " << line << '\n';
           }
         }
         else{
