@@ -15,10 +15,6 @@
 namespace fs = std::filesystem;
 // g++ -std=c++17 -o shell src/main.cpp
 // g++ -std=c++17 -o shell src/main.cpp -lreadline
-
-const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history"};
-
-// Forward declarations
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current);
 std::vector<std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists, bool &is_operator_appends_error_exists);
 std::string findExecPath(const std::string &program_name);
@@ -27,6 +23,8 @@ void runPipeline(const std::vector<std::vector<std::string>> &segments);
 std::vector<std::vector<std::string>> splitByPipe(const std::vector<std::string> &tokens);
 char* builtin_completer(const char* text, int state);
 char** shell_completer(const char* text, int start, int end);
+
+const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history"};
 
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current){
   if(quoteChar == '\"'){
