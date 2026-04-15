@@ -179,6 +179,7 @@ void runPipeline(const std::vector<std::vector<std::string>> &segments) {
             if (i > 0) dup2(pipes[i-1][0], STDIN_FILENO);
             // Wire up stdout to the next pipe
             if (i < n-1) dup2(pipes[i][1], STDOUT_FILENO);
+
             // Close all pipe fds in the child
             for (auto &p : pipes) { 
                 close(p[0]); 
@@ -193,7 +194,6 @@ void runPipeline(const std::vector<std::vector<std::string>> &segments) {
     for (auto &p : pipes) { close(p[0]); close(p[1]); }
     for (auto pid : pids) waitpid(pid, nullptr, 0);
 }
-
 
 
 void execSegment(const std::vector<std::string> &seg) {
@@ -344,12 +344,10 @@ int main(){
 
         if(program_name == "exit"){ break; }
         else if(program_name == "echo") { builtin_echo(args, output_text); }
-        else if(program_name == "pwd") {  builtin_pwd(output_text); }
-        else if(program_name == "cat"){ builtin_cat(args, output_text, output_error_text); }
-        else if(program_name == "cd"){
-          builtin_cd(args, output_error_text);
-        }
-        else if(program_name == "type"){
+        else if(program_name == "pwd")  { builtin_pwd(output_text); }
+        else if(program_name == "cat")  { builtin_cat(args, output_text, output_error_text); }
+        else if(program_name == "cd")   { builtin_cd(args, output_error_text); }
+        else if(program_name == "type") {
             if(args.empty()){ output_error_text << "type: missing argument\n"; }
             else if(builtins.count(args[0])){ output_text << args[0] << " is a shell builtin\n"; }
             else{
@@ -363,10 +361,15 @@ int main(){
           if(home){
             std::string history_path = std::string(home) + "/.shell_history";
             std::ifstream file(history_path);
+            std::vector<std::string> lines;
             std::string line;
-            int i = 1;
-            while(std::getline(file, line)) {
-                std::cout << "    " << i++ << "  " << line << '\n';
+            while(std::getline(file, line)) lines.push_back(line);
+            int total = (int)lines.size();
+            int show = total;
+            if(!args.empty()) show = std::stoi(args[0]);
+            int startIdx = std::max(0, total - show);
+            for(int i = startIdx; i < total; i++){
+                std::cout << "    " << (i + 1) << "  " << lines[i] << '\n';
             }
           }
         }
