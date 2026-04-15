@@ -26,6 +26,45 @@ char** shell_completer(const char* text, int start, int end);
 
 const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history"};
 
+void builtin_echo(const std::vector<std::string>& args, std::ostream& out) {
+    for (size_t i = 0; i < args.size(); i++) {
+        if (i > 0) out << ' ';
+        out << args[i];
+    }
+    out << '\n';
+}
+void builtin_pwd(std::ostream& out){
+    char buffer[1024];
+    char *p;
+    p = getcwd(buffer, sizeof(buffer)); //get Current Working Directory
+    out << p << std::endl;
+}
+void builtin_cat(const std::vector<std::string>& args, std::ostream& out, std::ostream & err){
+    if (args.empty()) {
+        out << std::cin.rdbuf();
+        return;
+    }
+    for (const auto& fileName : args) {
+        std::ifstream file(fileName);
+        if (!file) { err << "cat: " << fileName << ": No such file or directory\n"; continue; }
+        out << file.rdbuf();
+    }
+}
+void builtin_cd(const std::vector<std::string>& args, std::ostream& err) {
+    if (args.size() > 1) {
+        err << "cd: too many arguments\n";
+        return;
+    }
+    if (args.empty() || args[0] == "~") {
+        const char* home = std::getenv("HOME");
+        if (home && chdir(home) != 0)
+            err << "cd: " << home << ": No such file or directory\n";
+        return;
+    }
+    if (chdir(args[0].c_str()) != 0)
+        err << "cd: " << args[0] << ": No such file or directory\n";
+}
+
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current){
   if(quoteChar == '\"'){
     i++; // skip the '\'
@@ -160,15 +199,10 @@ void execSegment(const std::vector<std::string> &seg) {
     std::vector<std::string> args(seg.begin() + 1, seg.end());
 
     if (cmd == "echo") {
-        for (size_t i = 0; i < args.size(); i++) {
-            if (i > 0) std::cout << ' ';
-            std::cout << args[i];
-        }
-        std::cout << '\n';
+        builtin_echo(args, std::cout);
         exit(0);
     } else if (cmd == "pwd") {
-        char buf[1024];
-        if (getcwd(buf, sizeof(buf))) std::cout << buf << '\n';
+        builtin_pwd(std::cout);
         exit(0);
     } else if (cmd == "type") {
         if (args.empty()) { std::cerr << "type: missing argument\n"; exit(1); }
@@ -182,15 +216,7 @@ void execSegment(const std::vector<std::string> &seg) {
         }
         exit(0);
     } else if (cmd == "cat") {
-        if (args.empty()) {
-            std::cout << std::cin.rdbuf();
-        } else {
-            for (const auto &fileName : args) {
-                std::ifstream file(fileName);
-                if (!file) { std::cerr << "cat: " << fileName << ": No such file or directory\n"; continue; }
-                std::cout << file.rdbuf();
-            }
-        }
+        builtin_cat(args, std::cout, std::cerr);
         exit(0);
     } else {
         std::string exec_path = findExecPath(cmd);
@@ -262,6 +288,21 @@ char** shell_completer(const char* text, int start, int end) {
     return nullptr;
 }
 
+void builtin_cd(const std::vector<std::string>& args, std::ostream& err) {
+    if (args.size() > 1) {
+        err << "cd: too many arguments\n";
+        return;
+    }
+    if (args.empty() || args[0] == "~") {
+        const char* home = std::getenv("HOME");
+        if (home && chdir(home) != 0)
+            err << "cd: " << home << ": No such file or directory\n";
+        return;
+    }
+    if (chdir(args[0].c_str()) != 0)
+        err << "cd: " << args[0] << ": No such file or directory\n";
+}
+
 void storeCommandAsHistory(std::string input){
     const char* home = std::getenv("HOME");
     std::string history_path = std::string(home) + "/.shell_history";
@@ -313,41 +354,11 @@ int main(){
         }
 
         if(program_name == "exit"){ break; }
-        else if(program_name == "echo") {
-          for(size_t i = 0; i < args.size(); i++){ output_text << args[i] << ' '; }
-          output_text << '\n';
-        }
-        else if(program_name == "pwd") { 
-          char buffer[1024];
-          char *p;
-          p = getcwd(buffer, sizeof(buffer)); //get Current Working Directory
-          output_text << p << std::endl;
-        }
-        else if(program_name == "cat"){
-          for(const auto &fileName : args){ 
-            std::ifstream file(fileName);
-            if(!file){
-              output_error_text << "cat: " << fileName << ": No such file or directory\n";
-              continue;
-            }
-            output_text << file.rdbuf();
-          }
-        }
+        else if(program_name == "echo") { builtin_echo(args, output_text); }
+        else if(program_name == "pwd") {  builtin_pwd(output_text); }
+        else if(program_name == "cat"){ builtin_cat(args, output_text, output_error_text); }
         else if(program_name == "cd"){
-          if(args.size() > 1) {
-            output_error_text << "cd: too many arguments\n";
-          }
-          else if(args[0] == "~" || args.empty()){
-            const char *home = std::getenv("HOME");
-            if(home && chdir(home) != 0){
-              output_error_text << "cd: " << home << ": No such file or directory\n";
-            }
-          }
-          else{
-            if(chdir(args[0].c_str()) != 0){
-              output_error_text << "cd: " << args[0] << ": No such file or directory\n";
-            }
-          }
+          builtin_cd(args, output_error_text);
         }
         else if(program_name == "history"){
           const char* home = std::getenv("HOME");
@@ -410,6 +421,7 @@ int main(){
                 }
             }
         }
+        
         if (!output_handled) {
             if(is_redirect_exists || is_redirect_error_exists ||  is_operator_appends_exists || is_operator_appends_error_exists){
                 auto flags = is_operator_appends_exists || is_operator_appends_error_exists ? std::ios::app : std::ios::trunc;
