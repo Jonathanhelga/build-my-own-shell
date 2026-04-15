@@ -303,11 +303,13 @@ int main(){
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
     rl_attempted_completion_function = shell_completer;
+    std::vector<std::string> session_history;
     while(true){
         char *line = readline("$ ");
         if (!line) break;
         std::string input(line);
         add_history(line);
+        session_history.push_back(input);
         storeCommandAsHistory(input);
         free(line);
         bool is_redirect_exists = false;
@@ -357,21 +359,13 @@ int main(){
             }
         }
         else if(program_name == "history"){
-          const char* home = std::getenv("HOME");
-          if(home){
-            std::string history_path = std::string(home) + "/.shell_history";
-            std::ifstream file(history_path);
-            std::vector<std::string> lines;
-            std::string line;
-            while(std::getline(file, line)) lines.push_back(line);
-            int total = (int)lines.size();
+            int total = (int)session_history.size();
             int show = total;
             if(!args.empty()) show = std::stoi(args[0]);
             int startIdx = std::max(0, total - show);
             for(int i = startIdx; i < total; i++){
-                std::cout << "    " << (i + 1) << "  " << lines[i] << '\n';
+                std::cout << "    " << (i + 1) << "  " << session_history[i] << '\n';
             }
-          }
         }
         else{
             std::string exec_path = findExecPath(program_name);
