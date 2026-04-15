@@ -10,10 +10,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <readline/readline.h>
-#include <readline/history.h>
 
 namespace fs = std::filesystem;
-// g++ -std=c++17 -o shell src/main.cpp
 // g++ -std=c++17 -o shell src/main.cpp -lreadline
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current);
 std::vector<std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists, bool &is_operator_appends_error_exists);
@@ -308,7 +306,6 @@ int main(){
         char *line = readline("$ ");
         if (!line) break;
         std::string input(line);
-        add_history(line);
         session_history.push_back(input);
         storeCommandAsHistory(input);
         free(line);
