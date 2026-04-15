@@ -151,6 +151,21 @@ std::string findExecPath(const std::string &program_name){
     return "";
 }
 
+std::vector<std::vector<std::string>> splitByPipe(const std::vector<std::string> &tokens) {
+    std::vector<std::vector<std::string>> segments;
+    std::vector<std::string> cur;
+    for (const auto &tok : tokens) {
+        if (tok == "|") {
+            if (!cur.empty()) segments.push_back(cur);
+            cur.clear();
+        } else {
+            cur.push_back(tok);
+        }
+    }
+    if (!cur.empty()) segments.push_back(cur);
+    return segments;
+}
+
 void runPipeline(const std::vector<std::vector<std::string>> &segments) {
     int n = segments.size();
     std::vector<std::array<int,2>> pipes(n - 1);
@@ -179,20 +194,7 @@ void runPipeline(const std::vector<std::vector<std::string>> &segments) {
     for (auto pid : pids) waitpid(pid, nullptr, 0);
 }
 
-std::vector<std::vector<std::string>> splitByPipe(const std::vector<std::string> &tokens) {
-    std::vector<std::vector<std::string>> segments;
-    std::vector<std::string> cur;
-    for (const auto &tok : tokens) {
-        if (tok == "|") {
-            if (!cur.empty()) segments.push_back(cur);
-            cur.clear();
-        } else {
-            cur.push_back(tok);
-        }
-    }
-    if (!cur.empty()) segments.push_back(cur);
-    return segments;
-}
+
 
 void execSegment(const std::vector<std::string> &seg) {
     if (seg.empty()) exit(0);
