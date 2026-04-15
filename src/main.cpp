@@ -10,8 +10,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <readline/readline.h>
+#include <readline/history.h>
+#define HISTSIZE 500
 
 namespace fs = std::filesystem;
+std::vector<std::string> history_memory;
+int session_start = 0;
+
+
 // g++ -std=c++17 -o shell src/main.cpp -lreadline
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current);
 std::vector<std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists, bool &is_operator_appends_error_exists);
@@ -21,6 +27,9 @@ void runPipeline(const std::vector<std::vector<std::string>> &segments);
 std::vector<std::vector<std::string>> splitByPipe(const std::vector<std::string> &tokens);
 char* builtin_completer(const char* text, int state);
 char** shell_completer(const char* text, int start, int end);
+void storeHistoryMemory();
+void loadHistoryMemory();
+
 
 const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history"};
 
@@ -62,7 +71,15 @@ void builtin_cd(const std::vector<std::string>& args, std::ostream& err) {
     if (chdir(args[0].c_str()) != 0)
         err << "cd: " << args[0] << ": No such file or directory\n";
 }
-
+void builtin_type(const std::vector<std::string>& args, std::ostream& out, std::ostream& err){
+    if(args.empty()){ err << "type: missing argument\n"; }
+    else if(builtins.count(args[0])){ out << args[0] << " is a shell builtin\n"; }
+    else{
+        std::string p = findExecPath(args[0]);
+        if(!p.empty()) out << args[0] << " is " << p << '\n';
+        else err << args[0] << ": not found\n";
+    }
+}
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current){
   if(quoteChar == '\"'){
     i++; // skip the '\'
@@ -163,7 +180,6 @@ std::vector<std::vector<std::string>> splitByPipe(const std::vector<std::string>
     if (!cur.empty()) segments.push_back(cur);
     return segments;
 }
-
 void runPipeline(const std::vector<std::vector<std::string>> &segments) {
     int n = segments.size();
     std::vector<std::array<int,2>> pipes(n - 1);
@@ -192,8 +208,6 @@ void runPipeline(const std::vector<std::vector<std::string>> &segments) {
     for (auto &p : pipes) { close(p[0]); close(p[1]); }
     for (auto pid : pids) waitpid(pid, nullptr, 0);
 }
-
-
 void execSegment(const std::vector<std::string> &seg) {
     if (seg.empty()) exit(0);
     const std::string &cmd = seg[0];
@@ -206,15 +220,7 @@ void execSegment(const std::vector<std::string> &seg) {
         builtin_pwd(std::cout);
         exit(0);
     } else if (cmd == "type") {
-        if (args.empty()) { std::cerr << "type: missing argument\n"; exit(1); }
-        const std::string &target = args[0];
-        if (builtins.count(target)) {
-            std::cout << target << " is a shell builtin\n";
-        } else {
-            std::string path = findExecPath(target);
-            if (!path.empty()) std::cout << target << " is " << path << '\n';
-            else std::cerr << target << ": not found\n";
-        }
+        builtin_type(args, std::cout, std::cerr);
         exit(0);
     } else if (cmd == "cat") {
         builtin_cat(args, std::cout, std::cerr);
@@ -280,7 +286,6 @@ char* builtin_completer(const char* text, int state) {
     }
     return nullptr;
 }
-
 char** shell_completer(const char* text, int start, int end) {
     if(start == 0){
       rl_attempted_completion_over = 1;  // don't fall back to file completion
@@ -289,12 +294,24 @@ char** shell_completer(const char* text, int start, int end) {
     return nullptr;
 }
 
-void storeCommandAsHistory(const std::string& input){
+void storeHistoryMemory(){
     const char* home = std::getenv("HOME");
     if (!home) return;
     std::string history_path = std::string(home) + "/.shell_history";
     std::ofstream history(history_path, std::ios::app);
-    history << input << std::endl;
+    for (int i = session_start; i < (int)history_memory.size(); i++){
+        history << history_memory[i] << '\n';
+    }
+}
+void loadHistoryMemory(){
+    const char* home = std::getenv("HOME");
+    if (!home) return;
+    std::string history_path = std::string(home) + "/.shell_history";
+    std::ifstream history(history_path);
+    std::string command;
+    while(std::getline(history, command)){  history_memory.push_back(command); }
+    if ((int)history_memory.size() > HISTSIZE) 
+        history_memory.erase(history_memory.begin(), history_memory.begin() + history_memory.size() - HISTSIZE);
 }
 
 int main(){
@@ -302,12 +319,18 @@ int main(){
     std::cerr << std::unitbuf;
     rl_attempted_completion_function = shell_completer;
     std::vector<std::string> session_history;
+
+    loadHistoryMemory();
+    session_start = history_memory.size();
+    for (const auto& cmd : history_memory) { add_history(cmd.c_str()); }   
     while(true){
         char *line = readline("$ ");
-        if (!line) break;
+        if (!line) { storeHistoryMemory(); break; }
         std::string input(line);
-        session_history.push_back(input);
-        storeCommandAsHistory(input);
+        if (!input.empty()) {                                                                                                                                                                      
+            history_memory.push_back(input);                                                                                                                                                     
+            add_history(input.c_str());
+        }
         free(line);
         bool is_redirect_exists = false;
         bool is_redirect_error_exists = false;
@@ -318,10 +341,7 @@ int main(){
 
         bool has_pipe = false;
         for (const auto &tok : tokens) if (tok == "|") { has_pipe = true; break; }
-        if (has_pipe) {
-            runPipeline(splitByPipe(tokens));
-            continue;
-        }
+        if (has_pipe) { runPipeline(splitByPipe(tokens)); continue; }
 
         std::ostringstream output_text;
         std::ostringstream output_error_text;
@@ -341,27 +361,20 @@ int main(){
             }
         }
 
-        if(program_name == "exit"){ break; }
+        if(program_name == "exit"){  storeHistoryMemory(); break; }
+        
         else if(program_name == "echo") { builtin_echo(args, output_text); }
         else if(program_name == "pwd")  { builtin_pwd(output_text); }
         else if(program_name == "cat")  { builtin_cat(args, output_text, output_error_text); }
         else if(program_name == "cd")   { builtin_cd(args, output_error_text); }
-        else if(program_name == "type") {
-            if(args.empty()){ output_error_text << "type: missing argument\n"; }
-            else if(builtins.count(args[0])){ output_text << args[0] << " is a shell builtin\n"; }
-            else{
-                std::string p = findExecPath(args[0]);
-                if(!p.empty()) output_text << args[0] << " is " << p << '\n';
-                else output_error_text << args[0] << ": not found\n";
-            }
-        }
+        else if(program_name == "type") { builtin_type(args, output_text, output_error_text); }
         else if(program_name == "history"){
-            int total = (int)session_history.size();
+            int total = (int)history_memory.size();
             int show = total;
             if(!args.empty()) show = std::stoi(args[0]);
             int startIdx = std::max(0, total - show);
             for(int i = startIdx; i < total; i++){
-                std::cout << "    " << (i + 1) << "  " << session_history[i] << '\n';
+                std::cout << "    " << (i + 1) << "  " << history_memory[i] << '\n';
             }
         }
         else{
