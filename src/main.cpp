@@ -294,7 +294,7 @@ void storeCommandAsHistory(const std::string& input){
     if (!home) return;
     std::string history_path = std::string(home) + "/.shell_history";
     std::ofstream history(history_path, std::ios::app);
-    history << input << '\n';
+    history << input << std::endl;
 }
 
 int main(){
