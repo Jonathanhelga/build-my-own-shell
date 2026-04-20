@@ -397,6 +397,16 @@ int main(){
                     }
                 }
             }
+            else if(!args.empty() && args[0] == "-a"){
+                if (args.size() < 2) { std::cerr << "history: -a: missing filename\n"; }
+                else{
+                    std::ofstream hf(args[1], std::ios::app);
+                    if (!hf) { std::cerr << "history: " << args[1] << ": cannot open file\n"; } 
+                    else{
+                        for(const auto& cmd: history_memory){ hf << cmd << '\n'; }
+                    }
+                }
+            }
             else {
                 int total = (int)history_memory.size();
                 int show = total;
