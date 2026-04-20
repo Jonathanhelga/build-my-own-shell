@@ -369,12 +369,31 @@ int main(){
         else if(program_name == "cd")   { builtin_cd(args, output_error_text); }
         else if(program_name == "type") { builtin_type(args, output_text, output_error_text); }
         else if(program_name == "history"){
-            int total = (int)history_memory.size();
-            int show = total;
-            if(!args.empty()) show = std::stoi(args[0]);
-            int startIdx = std::max(0, total - show);
-            for(int i = startIdx; i < total; i++){
-                std::cout << "    " << (i + 1) << "  " << history_memory[i] << '\n';
+            if (!args.empty() && args[0] == "-r") {
+                if (args.size() < 2) {
+                    std::cerr << "history: -r: missing filename\n";
+                } else {
+                    std::ifstream hf(args[1]);
+                    if (!hf) {
+                        std::cerr << "history: " << args[1] << ": cannot open file\n";
+                    } else {
+                        std::string line;
+                        while (std::getline(hf, line)) {
+                            if (!line.empty()) {
+                                history_memory.push_back(line);
+                                add_history(line.c_str());
+                            }
+                        }
+                    }
+                }
+            } else {
+                int total = (int)history_memory.size();
+                int show = total;
+                if (!args.empty()) show = std::stoi(args[0]);
+                int startIdx = std::max(0, total - show);
+                for (int i = startIdx; i < total; i++) {
+                    std::cout << "    " << (i + 1) << "  " << history_memory[i] << '\n';
+                }
             }
         }
         else{
