@@ -332,6 +332,7 @@ int main(){
             add_history(input.c_str());
         }
         free(line);
+
         bool is_redirect_exists = false;
         bool is_redirect_error_exists = false;
         bool is_operator_appends_exists = false;
@@ -362,7 +363,6 @@ int main(){
         }
 
         if(program_name == "exit"){  storeHistoryMemory(); break; }
-        
         else if(program_name == "echo") { builtin_echo(args, output_text); }
         else if(program_name == "pwd")  { builtin_pwd(output_text); }
         else if(program_name == "cat")  { builtin_cat(args, output_text, output_error_text); }
@@ -386,7 +386,18 @@ int main(){
                         }
                     }
                 }
-            } else {
+            } 
+            else if(!args.empty() && args[0] == "-w"){
+                if (args.size() < 2) { std::cerr << "history: -w: missing filename\n"; }
+                else{
+                    std::ofstream hf(args[1]);
+                    if (!hf) { std::cerr << "history: " << args[1] << ": cannot open file\n"; } 
+                    else{
+                        for(const auto& cmd: history_memory){ hf << cmd << '\n'; }
+                    }
+                }
+            }
+            else {
                 int total = (int)history_memory.size();
                 int show = total;
                 if (!args.empty()) show = std::stoi(args[0]);
