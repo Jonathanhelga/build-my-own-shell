@@ -16,6 +16,7 @@
 namespace fs = std::filesystem;
 std::vector<std::string> history_memory;
 int session_start = 0;
+int history_last_appended = 0;
 
 
 // g++ -std=c++17 -o shell src/main.cpp -lreadline
@@ -322,6 +323,7 @@ int main(){
 
     loadHistoryMemory();
     session_start = history_memory.size();
+    history_last_appended = session_start;
     for (const auto& cmd : history_memory) { add_history(cmd.c_str()); }   
     while(true){
         char *line = readline("$ ");
@@ -403,9 +405,10 @@ int main(){
                     std::ofstream hf(args[1], std::ios::app);
                     if (!hf) { std::cerr << "history: " << args[1] << ": cannot open file\n"; }
                     else{
-                        for (int i = session_start; i < (int)history_memory.size(); i++) {
+                        for (int i = history_last_appended; i < (int)history_memory.size(); i++) {
                             hf << history_memory[i] << '\n';
                         }
+                        history_last_appended = (int)history_memory.size();
                     }
                 }
             }
