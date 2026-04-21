@@ -28,6 +28,7 @@ void runPipeline(const std::vector<std::vector<std::string>> &segments);
 std::vector<std::vector<std::string>> splitByPipe(const std::vector<std::string> &tokens);
 char* builtin_completer(const char* text, int state);
 char** shell_completer(const char* text, int start, int end);
+std::string getHistoryPath();
 void storeHistoryMemory();
 void loadHistoryMemory();
 
@@ -81,7 +82,7 @@ void builtin_type(const std::vector<std::string>& args, std::ostream& out, std::
         else err << args[0] << ": not found\n";
     }
 }
-bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current){
+bool checkBackslash(char quoteChar, const std::string& input, size_t& i, std::string& current){
   if(quoteChar == '\"'){
     i++; // skip the '\'
     if(i < input.size()){
@@ -295,19 +296,25 @@ char** shell_completer(const char* text, int start, int end) {
     return nullptr;
 }
 
-void storeHistoryMemory(){
+std::string getHistoryPath(){
+    const char* histfile = std::getenv("HISTFILE");
+    if (histfile && histfile[0] != '\0') return std::string(histfile);
     const char* home = std::getenv("HOME");
-    if (!home) return;
-    std::string history_path = std::string(home) + "/.shell_history";
+    if (!home) return "";
+    return std::string(home) + "/.shell_history";
+}
+
+void storeHistoryMemory(){
+    std::string history_path = getHistoryPath();
+    if (history_path.empty()) return;
     std::ofstream history(history_path, std::ios::app);
     for (int i = session_start; i < (int)history_memory.size(); i++){
         history << history_memory[i] << '\n';
     }
 }
 void loadHistoryMemory(){
-    const char* home = std::getenv("HOME");
-    if (!home) return;
-    std::string history_path = std::string(home) + "/.shell_history";
+    std::string history_path = getHistoryPath();
+    if (history_path.empty()) return;
     std::ifstream history(history_path);
     std::string command;
     while(std::getline(history, command)){  history_memory.push_back(command); }
