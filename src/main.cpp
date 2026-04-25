@@ -1,4 +1,6 @@
 #include <cstdlib>
+// #include <cerrno>
+// #include <csignal>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
@@ -16,22 +18,42 @@
 namespace fs = std::filesystem;
 std::vector<std::string> history_memory;
 int session_start = 0;
+int history_last_appended = 0;
 
 
 // g++ -std=c++17 -o shell src/main.cpp -lreadline
+
+struct ParseResult {
+    std::vector<std::string> tokens;
+    bool redirect_out = false;
+    bool redirect_err = false;
+    bool append_out   = false;
+    bool append_err   = false;
+};
+
+struct BackgroundJob {
+  int job_id;
+  pid_t pid;
+  std::vector<std::string> command;
+};
+
+std::vector<BackgroundJob> bg_jobs;
+
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current);
-std::vector<std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists, bool &is_operator_appends_error_exists);
+ParseResult tokenize(const std::string &input);
 std::string findExecPath(const std::string &program_name);
 void execSegment(const std::vector<std::string> &seg);
 void runPipeline(const std::vector<std::vector<std::string>> &segments);
 std::vector<std::vector<std::string>> splitByPipe(const std::vector<std::string> &tokens);
 char* builtin_completer(const char* text, int state);
 char** shell_completer(const char* text, int start, int end);
+std::string getHistoryPath();
 void storeHistoryMemory();
 void loadHistoryMemory();
+void runBuiltin(const std::string& program_name, const std::vector<std::string>& args, std::ostream& out, std::ostream& err);
+void reapingJob(std::vector<BackgroundJob>& bg_jobs, std::vector<bool>& jobID_assigner);
 
-
-const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history"};
+const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history", "jobs"};
 
 void builtin_echo(const std::vector<std::string>& args, std::ostream& out) {
     for (size_t i = 0; i < args.size(); i++) {
@@ -80,7 +102,42 @@ void builtin_type(const std::vector<std::string>& args, std::ostream& out, std::
         else err << args[0] << ": not found\n";
     }
 }
-bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current){
+void builtin_history(const std::vector<std::string>& args, std::ostream& out, std::ostream& err){
+    int total = (int)history_memory.size();
+    if(!args.empty()){
+        if(args[0] == "-r"){
+            if (args.size() < 2) { err << "history: -r: missing filename\n"; return; }
+            std::ifstream hf(args[1]);
+            if (!hf) { err << "history: " << args[1] << ": cannot open file\n"; return; }
+            std::string line;
+            while (std::getline(hf, line)) {
+                if (!line.empty()) { history_memory.push_back(line); add_history(line.c_str()); }
+            }
+        }
+        else if(args[0] == "-w"){
+            if (args.size() < 2) { err << "history: -w: missing filename\n"; return; }
+            std::ofstream hf(args[1]);
+            if (!hf) { err << "history: " << args[1] << ": cannot open file\n"; return; }
+            for(const auto& cmd: history_memory){ hf << cmd << '\n'; }
+        }
+        else if(args[0] == "-a"){
+            if (args.size() < 2) { err << "history: -a: missing filename\n"; return; }
+            std::ofstream hf(args[1], std::ios::app);
+            if (!hf) { err << "history: " << args[1] << ": cannot open file\n"; return; }
+            for (int i = history_last_appended; i < total; i++) { hf << history_memory[i] << '\n'; }
+            history_last_appended = total;
+        }
+        else{
+            int show = std::stoi(args[0]);
+            int startIdx = std::max(0, total - show);
+            for (int i = startIdx; i < total; i++) { out << "  " << (i + 1) << "  " << history_memory[i] << '\n'; }
+        }
+    }
+    else{
+        for (int i = 0; i < total; i++) { out << "  " << (i + 1) << "  " << history_memory[i] << '\n'; }
+    }
+}
+bool checkBackslash(char quoteChar, const std::string& input, size_t& i, std::string& current){
   if(quoteChar == '\"'){
     i++; // skip the '\'
     if(i < input.size()){
@@ -98,8 +155,8 @@ bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::st
   return false; 
 }
 
-std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists, bool &is_operator_appends_error_exists){
-  std::vector <std::string> tokens;
+ParseResult tokenize(const std::string &input){
+  ParseResult result;
   std::string current;
   size_t i = 0;
   while(i < input.size()){
@@ -114,23 +171,20 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
         current += input[i];
         i++;
       }
-      if(i < input.size()) i++; // skip closing '
+      if(i < input.size()) i++; // skip closing quote
     }
     else if(c == '\\'){
       i++;
-      if(i < input.size()){
-        if(input[i] == '\\') { current += input[i++]; }
-        else { current += input[i++]; }
-      }
+      if(i < input.size()) current += input[i++];
     }
     else if (c == ' ' || c == '\t'){
-      if(current == ">" || current == "1>"){ is_redirect_exists = true; }
-      else if(current == "2>") { is_redirect_error_exists = true; }
-      else if(current == ">>" || current == "1>>"){ is_operator_appends_exists = true; }
-      else if(current == "2>>") { is_operator_appends_error_exists = true; }
+      if(current == ">" || current == "1>")       { result.redirect_out = true; }
+      else if(current == "2>")                    { result.redirect_err = true; }
+      else if(current == ">>" || current == "1>>") { result.append_out  = true; }
+      else if(current == "2>>")                   { result.append_err   = true; }
 
       if(!current.empty()){
-        tokens.push_back(current);
+        result.tokens.push_back(current);
         current.clear();
       }
       i++;
@@ -140,8 +194,8 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
       i++;
     }
   }
-  if(!current.empty()){ tokens.push_back(current); }
-  return tokens;
+  if(!current.empty()){ result.tokens.push_back(current); }
+  return result;
 }
 
 std::string findExecPath(const std::string &program_name){
@@ -210,34 +264,23 @@ void runPipeline(const std::vector<std::vector<std::string>> &segments) {
 }
 void execSegment(const std::vector<std::string> &seg) {
     if (seg.empty()) exit(0);
-    const std::string &cmd = seg[0];
+    const std::string cmd = seg[0];
     std::vector<std::string> args(seg.begin() + 1, seg.end());
-
-    if (cmd == "echo") {
-        builtin_echo(args, std::cout);
+    if(builtins.count(cmd)){
+        runBuiltin(cmd, args, std::cout, std::cerr);
         exit(0);
-    } else if (cmd == "pwd") {
-        builtin_pwd(std::cout);
-        exit(0);
-    } else if (cmd == "type") {
-        builtin_type(args, std::cout, std::cerr);
-        exit(0);
-    } else if (cmd == "cat") {
-        builtin_cat(args, std::cout, std::cerr);
-        exit(0);
-    } else {
-        std::string exec_path = findExecPath(cmd);
-        if (exec_path.empty()) {
-            std::cerr << cmd << ": not found\n";
-            exit(127);
-        }
-        std::vector<char*> argv;
-        argv.push_back((char*)cmd.c_str());
-        for (auto &a : args) argv.push_back((char*)a.c_str());
-        argv.push_back(nullptr);
-        execv(exec_path.c_str(), argv.data());
-        exit(1);
     }
+    std::string exec_path = findExecPath(cmd);
+    if (exec_path.empty()) {
+        std::cerr << cmd << ": not found\n";
+        exit(127);
+    }
+    std::vector<char*> argv;
+    argv.push_back((char*)cmd.c_str());
+    for (auto &a : args) argv.push_back((char*)a.c_str());
+    argv.push_back(nullptr);
+    execv(exec_path.c_str(), argv.data());
+    exit(1);
 }
 
 char* builtin_completer(const char* text, int state) {
@@ -294,24 +337,63 @@ char** shell_completer(const char* text, int start, int end) {
     return nullptr;
 }
 
-void storeHistoryMemory(){
+std::string getHistoryPath(){
+    const char* histfile = std::getenv("HISTFILE");
+    if (histfile && histfile[0] != '\0') return std::string(histfile);
     const char* home = std::getenv("HOME");
-    if (!home) return;
-    std::string history_path = std::string(home) + "/.shell_history";
+    if (!home) return "";
+    return std::string(home) + "/.shell_history";
+}
+
+void storeHistoryMemory(){
+    std::string history_path = getHistoryPath();
+    if (history_path.empty()) return;
     std::ofstream history(history_path, std::ios::app);
     for (int i = session_start; i < (int)history_memory.size(); i++){
         history << history_memory[i] << '\n';
     }
 }
 void loadHistoryMemory(){
-    const char* home = std::getenv("HOME");
-    if (!home) return;
-    std::string history_path = std::string(home) + "/.shell_history";
+    std::string history_path = getHistoryPath();
+    if (history_path.empty()) return;
     std::ifstream history(history_path);
     std::string command;
     while(std::getline(history, command)){  history_memory.push_back(command); }
     if ((int)history_memory.size() > HISTSIZE) 
         history_memory.erase(history_memory.begin(), history_memory.begin() + history_memory.size() - HISTSIZE);
+}
+
+void runBuiltin(const std::string& program_name, const std::vector<std::string>& args, std::ostream& out, std::ostream& err){
+    if(program_name == "echo") { builtin_echo(args, out); }
+    else if(program_name == "pwd")  { builtin_pwd(out); }
+    else if(program_name == "cat")  { builtin_cat(args, out, err); }
+    else if(program_name == "cd")   { builtin_cd(args, err); }
+    else if(program_name == "type") { builtin_type(args, out, err); }
+    else if(program_name == "history"){ builtin_history(args, out, err); }
+}
+
+std::vector<bool> jobID_assigner;
+int next_job_number = 1;
+int job_number = 0;
+void reapingJob(std::vector<BackgroundJob>& bg_jobs, std::vector<bool>& jobID_assigner){
+    int jobs_total = (int)bg_jobs.size();
+    std::vector<BackgroundJob> remaining;
+    for(int i = 0; i < jobs_total; i++){
+        if(waitpid(bg_jobs[i].pid, nullptr, WNOHANG) != 0){
+            char sign = (i == jobs_total - 1) ? '+' : (i == jobs_total - 2) ? '-' : ' ';
+            const auto& toks = bg_jobs[i].command;
+            int end = (int)toks.size() - 1;
+            std::string cmd;
+            for(int j = 0; j < end; j++){
+                if(j > 0) cmd += " ";
+                cmd += toks[j];
+            }
+            std::cout << "[" << bg_jobs[i].job_id << "]" << sign << "  " << "Done" << "                 " << cmd << std::endl;
+            jobID_assigner[(bg_jobs[i].job_id)-1] = true;
+        }
+        else { remaining.push_back(bg_jobs[i]); }
+    }
+    bg_jobs = remaining; // moved outside the loop
 }
 
 int main(){
@@ -322,6 +404,7 @@ int main(){
 
     loadHistoryMemory();
     session_start = history_memory.size();
+    history_last_appended = session_start;
     for (const auto& cmd : history_memory) { add_history(cmd.c_str()); }   
     while(true){
         char *line = readline("$ ");
@@ -332,12 +415,30 @@ int main(){
             add_history(input.c_str());
         }
         free(line);
-        bool is_redirect_exists = false;
-        bool is_redirect_error_exists = false;
-        bool is_operator_appends_exists = false;
-        bool is_operator_appends_error_exists = false;
-        auto tokens = tokenize(input, is_redirect_exists, is_redirect_error_exists, is_operator_appends_exists, is_operator_appends_error_exists);
+
+        auto result = tokenize(input);
+        auto tokens = result.tokens;
         if (tokens.empty()) continue;
+        bool background = false;
+        std::vector<std::string> full_command;
+        if (!tokens.empty() && tokens.back() == "&") {
+            background = true;
+            full_command = tokens; // includes "&" at the back
+            job_number = -1;                                                                                                                         
+            for(int i = 0; i < (int)jobID_assigner.size(); i++){
+                if(jobID_assigner[i]){
+                    jobID_assigner[i] = false;  // mark as in-use
+                    job_number = i + 1;                                                                                                              
+                    break;
+                }                                                                                                                                    
+            }           
+            if(job_number == -1){
+                jobID_assigner.push_back({false});    // new slot, marked in-use
+                job_number = (int)jobID_assigner.size();                                                                                             
+            }  
+            tokens.pop_back();
+            if (tokens.empty()) continue;
+        }
 
         bool has_pipe = false;
         for (const auto &tok : tokens) if (tok == "|") { has_pipe = true; break; }
@@ -351,7 +452,7 @@ int main(){
         std::vector<std::string> args(tokens.begin() + 1, tokens.end());
 
         std::string redirect_file;
-        if (is_redirect_exists || is_redirect_error_exists || is_operator_appends_exists || is_operator_appends_error_exists) {
+        if (result.redirect_out || result.redirect_err || result.append_out || result.append_err) {
             for (size_t i = 0; i < args.size(); i++) {
                 if ((args[i] == ">" || args[i] == "1>" || args[i] == "2>" || args[i] == ">>" || args[i] == "1>>" || args[i] == "2>>") && i + 1 < args.size()) {
                     redirect_file = args[i + 1];
@@ -362,30 +463,66 @@ int main(){
         }
 
         if(program_name == "exit"){  storeHistoryMemory(); break; }
-        
-        else if(program_name == "echo") { builtin_echo(args, output_text); }
-        else if(program_name == "pwd")  { builtin_pwd(output_text); }
-        else if(program_name == "cat")  { builtin_cat(args, output_text, output_error_text); }
-        else if(program_name == "cd")   { builtin_cd(args, output_error_text); }
-        else if(program_name == "type") { builtin_type(args, output_text, output_error_text); }
-        else if(program_name == "history"){
-            int total = (int)history_memory.size();
-            int show = total;
-            if(!args.empty()) show = std::stoi(args[0]);
-            int startIdx = std::max(0, total - show);
-            for(int i = startIdx; i < total; i++){
-                std::cout << "    " << (i + 1) << "  " << history_memory[i] << '\n';
+        else if(builtins.count(program_name) && program_name != "exit" && program_name != "jobs") {
+            if (background) {
+                pid_t pid = fork();
+                if (pid == 0) {
+                    runBuiltin(program_name, args, std::cout, std::cerr);
+                    exit(0);
+                } else if (pid > 0) {
+                    bg_jobs.push_back({job_number, pid, full_command});
+                    std::cout << "[" << job_number << "] " << pid << std::endl;
+                    output_handled = true;
+                }
+            } else {
+                runBuiltin(program_name, args, output_text, output_error_text);
             }
         }
+        else if(program_name == "jobs") {
+            int jobs_total = (int)bg_jobs.size();
+            std::vector<std::string> statuses(jobs_total);
+            std::vector<BackgroundJob> remaining;
+
+            // Single pass determine status of each job
+            for(int i = 0; i < jobs_total; i++){
+                if(waitpid(bg_jobs[i].pid, nullptr, WNOHANG) != 0){
+                    statuses[i] = "Done";
+                } else {
+                    statuses[i] = "Running";
+                    remaining.push_back(bg_jobs[i]);
+                }
+            }
+
+            // Print all jobs with aligned columns
+            for(int i = 0; i < jobs_total; i++){
+                char sign = (i == jobs_total - 1) ? '+' : (i == jobs_total - 2) ? '-' : ' ';
+                const auto& toks = bg_jobs[i].command;
+                int end = (statuses[i] == "Done" && !toks.empty() && toks.back() == "&")
+                          ? (int)toks.size() - 1
+                          : (int)toks.size();
+                std::string cmd;
+                for(int j = 0; j < end; j++){
+                    if(j > 0) cmd += " ";
+                    cmd += toks[j];
+                }
+                std::cout << "[" << bg_jobs[i].job_id << "]" << sign
+                          << "  " << statuses[i] << "                 " << cmd << std::endl;
+            }
+
+            // Remove done jobs
+            bg_jobs = remaining;
+            output_handled = true;
+        }
+        
         else{
             std::string exec_path = findExecPath(program_name);
             if(!exec_path.empty()){
                 pid_t pid = fork();
                 if(pid == 0){
                     if(!redirect_file.empty()){
-                        int flags = O_WRONLY | O_CREAT | (is_operator_appends_exists || is_operator_appends_error_exists ? O_APPEND : O_TRUNC);
+                        int flags = O_WRONLY | O_CREAT | (result.append_out || result.append_err ? O_APPEND : O_TRUNC);
                         int fd = open(redirect_file.c_str(), flags, 0644);
-                        if(is_redirect_error_exists || is_operator_appends_error_exists){ dup2(fd, STDERR_FILENO); }
+                        if(result.redirect_err || result.append_err){ dup2(fd, STDERR_FILENO); }
                         else { dup2(fd, STDOUT_FILENO); }
                         close(fd);
                     }
@@ -396,20 +533,26 @@ int main(){
                     execv(exec_path.c_str(), argv.data());
                     exit(1);
                 } else if(pid > 0){
-                    int status;
-                    waitpid(pid, &status, 0);
-                    output_handled = true;
+                    if (!background) {
+                        int status;
+                        waitpid(pid, &status, 0);
+                        output_handled = true;
+                    } else {
+                        // int job_num = next_job_number++;
+                        bg_jobs.push_back({job_number, pid, full_command});
+                        output_text << "[" << job_number << "] " << pid << std::endl;
+                        output_handled = false;
+                    }
                 }
             } else {
                 output_error_text << program_name << ": not found\n";
             }
         }
-        
         if (!output_handled) {
-            if(is_redirect_exists || is_redirect_error_exists ||  is_operator_appends_exists || is_operator_appends_error_exists){
-                auto flags = is_operator_appends_exists || is_operator_appends_error_exists ? std::ios::app : std::ios::trunc;
+            if(result.redirect_out || result.redirect_err || result.append_out || result.append_err){
+                auto flags = result.append_out || result.append_err ? std::ios::app : std::ios::trunc;
                 std::ofstream file(redirect_file, flags);
-                if(is_redirect_exists || is_operator_appends_exists){
+                if(result.redirect_out || result.append_out){
                     file << output_text.str();
                     std::cerr << output_error_text.str();
                 }
@@ -423,5 +566,6 @@ int main(){
                 std::cerr << output_error_text.str();
             }
         }
+        if (!bg_jobs.empty()){ reapingJob(bg_jobs, jobID_assigner); }
     }
 }
