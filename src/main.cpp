@@ -475,7 +475,7 @@ int main(){
                     exit(0);
                 } else if (pid > 0) {
                     bg_jobs.push_back({job_number, pid, full_command});
-                    std::cout << "[" << job_num << "] " << pid << std::endl;
+                    std::cout << "[" << job_number << "] " << pid << std::endl;
                     output_handled = true;
                 }
             } else {
