@@ -447,16 +447,30 @@ int main(){
             }
         }
         else if(program_name == "jobs") {
-            char sign = ' ';
             int jobs_total = (int)bg_jobs.size();
-            int i = 0;
-            for(const auto& job : bg_jobs){
-                if(i == jobs_total - 2){ sign = '-'; }
-                if(i == jobs_total - 1){ sign = '+'; }
-                std::cout << "[" << job.job_id << "]" << sign << "  Running                 " << job.command << std::endl;
-                i++;
-                sign = ' ';
+            std::vector<std::string> statuses(jobs_total);
+            std::vector<BackgroundJob> remaining;
+
+            // Single pass: determine status of each job
+            for(int i = 0; i < jobs_total; i++){
+                if(waitpid(bg_jobs[i].pid, nullptr, WNOHANG) > 0){
+                    statuses[i] = "Done";
+                } else {
+                    statuses[i] = "Running";
+                    remaining.push_back(bg_jobs[i]);
+                }
             }
+
+            // Print all jobs with aligned columns
+            for(int i = 0; i < jobs_total; i++){
+                char sign = (i == jobs_total - 1) ? '+' : (i == jobs_total - 2) ? '-' : ' ';
+                std::string padding(24 - statuses[i].size(), ' ');
+                std::cout << "[" << bg_jobs[i].job_id << "]" << sign
+                          << "  " << statuses[i] << padding << bg_jobs[i].command << std::endl;
+            }
+
+            // Remove done jobs
+            bg_jobs = remaining;
             output_handled = true;
         }
         else{
