@@ -43,6 +43,7 @@ std::string getHistoryPath();
 void storeHistoryMemory();
 void loadHistoryMemory();
 void runBuiltin(const std::string& program_name, const std::vector<std::string>& args, std::ostream& out, std::ostream& err);
+void reapingJob(std::vector<BackgroundJob>& bg_jobs);
 
 const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history", "jobs"};
 
