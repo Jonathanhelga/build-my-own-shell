@@ -362,7 +362,7 @@ void runBuiltin(const std::string& program_name, const std::vector<std::string>&
 }
 
 struct BackgroundJob {
-  uint job_id;
+  int job_id;
   pid_t pid;
   std::string command;
 };
@@ -396,10 +396,10 @@ int main(){
         if (tokens.empty()) continue;
 
         bool background = false;
-        std::vector<std::string> full_command;
+        // std::vector<std::string> full_command;
         if (!tokens.empty() && tokens.back() == "&") {
             background = true;
-            full_command = tokens;
+            // full_command = tokens;
             tokens.pop_back();
             if (tokens.empty()) continue;
         }
@@ -435,7 +435,7 @@ int main(){
                     exit(0);
                 } else if (pid > 0) {
                     int job_num = next_job_number++;
-                    bg_jobs.push_back({job_num, pid, full_command});
+                    bg_jobs.push_back({job_num, pid, program_name});
                     std::cout << "[" << job_num << "] " << pid << std::endl;
                     output_handled = true;
                 }
