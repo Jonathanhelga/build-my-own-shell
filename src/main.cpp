@@ -393,7 +393,7 @@ void reapingJob(std::vector<BackgroundJob>& bg_jobs, std::vector <JobNumber>& jo
                 cmd += toks[j];
             }
             std::cout << "[" << bg_jobs[i].job_id << "]" << sign << "  " << "Done" << "                 " << cmd << std::endl;
-            jobID_assigner[(bg_jobs[i].job_id)-1] = true;
+            jobID_assigner[(bg_jobs[i].job_id)-1].empty = true;
         }
         else { remaining.push_back(bg_jobs[i]); }
     }
