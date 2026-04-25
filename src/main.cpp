@@ -390,6 +390,7 @@ void reapingJob(std::vector<BackgroundJob>& bg_jobs){
             std::cout << "[" << bg_jobs[i].job_id << "]" << sign << "  " << "Done" << "                 " << cmd << std::endl;
         }
         else { remaining.push_back(bg_jobs[i]); }
+        //  bg_jobs = remaining;
     }
     bg_jobs = remaining; // moved outside the loop
 }
@@ -417,7 +418,6 @@ int main(){
         auto result = tokenize(input);
         auto tokens = result.tokens;
         if (tokens.empty()) continue;
-        if (!bg_jobs.empty()){ reapingJob(bg_jobs); }
         bool background = false;
         std::vector<std::string> full_command;
         if (!tokens.empty() && tokens.back() == "&") {
@@ -535,7 +535,7 @@ int main(){
                 output_error_text << program_name << ": not found\n";
             }
         }
-        
+        if (!bg_jobs.empty()){ reapingJob(bg_jobs); }
         if (!output_handled) {
             if(result.redirect_out || result.redirect_err || result.append_out || result.append_err){
                 auto flags = result.append_out || result.append_err ? std::ios::app : std::ios::trunc;
