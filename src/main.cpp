@@ -362,8 +362,9 @@ void runBuiltin(const std::string& program_name, const std::vector<std::string>&
 }
 
 struct BackgroundJob {
-  int job_number;
+  uint job_id;
   pid_t pid;
+  std::string command;
 };
 
 std::vector<BackgroundJob> bg_jobs;
@@ -393,12 +394,16 @@ int main(){
         auto result = tokenize(input);
         auto tokens = result.tokens;
         if (tokens.empty()) continue;
+
         bool background = false;
+        std::string full_command;
         if (!tokens.empty() && tokens.back() == "&") {
             background = true;
+            full_command = tokens;
             tokens.pop_back();
             if (tokens.empty()) continue;
         }
+
         bool has_pipe = false;
         for (const auto &tok : tokens) if (tok == "|") { has_pipe = true; break; }
         if (has_pipe) { runPipeline(splitByPipe(tokens)); continue; }
@@ -430,6 +435,7 @@ int main(){
                     exit(0);
                 } else if (pid > 0) {
                     int job_num = next_job_number++;
+                    bg_jobs.push_back({job_num, pid, full_command});
                     std::cout << "[" << job_num << "] " << pid << std::endl;
                     output_handled = true;
                 }
@@ -437,7 +443,12 @@ int main(){
                 runBuiltin(program_name, args, output_text, output_error_text);
             }
         }
-        else if(program_name == "jobs") { continue; }
+        else if(program_name == "jobs") {
+            for(const auto& job : bg_jobs){
+                std::cout << "[" << job.job_id << "]+ Running " << job.command << std::endl;
+            }
+            output_handled = true;
+        }
         else{
             std::string exec_path = findExecPath(program_name);
             if(!exec_path.empty()){
@@ -463,7 +474,7 @@ int main(){
                         output_handled = true;
                     } else {
                         int job_num = next_job_number++;
-                        // bg_jobs.push_back({job_num, pid});
+                        bg_jobs.push_back({job_num, pid, program_name});
                         output_text << "[" << job_num << "] " << pid << std::endl;
                         output_handled = false;
                     }
