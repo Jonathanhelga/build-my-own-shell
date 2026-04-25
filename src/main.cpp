@@ -37,6 +37,10 @@ struct BackgroundJob {
   std::vector<std::string> command;
 };
 
+struct JobNumber {
+    bool empty = true;
+};
+
 std::vector<BackgroundJob> bg_jobs;
 
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current);
@@ -372,9 +376,10 @@ void runBuiltin(const std::string& program_name, const std::vector<std::string>&
     else if(program_name == "history"){ builtin_history(args, out, err); }
 }
 
+std::vector <JobNumber> jobID_assigner;
 int next_job_number = 1;
-
-void reapingJob(std::vector<BackgroundJob>& bg_jobs){
+int job_number = 0;
+void reapingJob(std::vector<BackgroundJob>& bg_jobs, std::vector <JobNumber>& jobID_assigner){
     int jobs_total = (int)bg_jobs.size();
     std::vector<BackgroundJob> remaining;
     for(int i = 0; i < jobs_total; i++){
@@ -388,9 +393,9 @@ void reapingJob(std::vector<BackgroundJob>& bg_jobs){
                 cmd += toks[j];
             }
             std::cout << "[" << bg_jobs[i].job_id << "]" << sign << "  " << "Done" << "                 " << cmd << std::endl;
+            jobID_assigner[(bg_jobs[i].job_id)-1] = true;
         }
         else { remaining.push_back(bg_jobs[i]); }
-        //  bg_jobs = remaining;
     }
     bg_jobs = remaining; // moved outside the loop
 }
@@ -423,6 +428,18 @@ int main(){
         if (!tokens.empty() && tokens.back() == "&") {
             background = true;
             full_command = tokens; // includes "&" at the back
+            job_number = -1;                                                                                                                         
+            for(int i = 0; i < (int)jobID_assigner.size(); i++){
+                if(jobID_assigner[i].empty){                                                                                                         
+                    jobID_assigner[i].empty = false;  // mark as in-use
+                    job_number = i + 1;                                                                                                              
+                    break;
+                }                                                                                                                                    
+            }           
+            if(job_number == -1){
+                jobID_assigner.push_back({false});    // new slot, marked in-use
+                job_number = (int)jobID_assigner.size();                                                                                             
+            }  
             tokens.pop_back();
             if (tokens.empty()) continue;
         }
@@ -457,8 +474,7 @@ int main(){
                     runBuiltin(program_name, args, std::cout, std::cerr);
                     exit(0);
                 } else if (pid > 0) {
-                    int job_num = next_job_number++;
-                    bg_jobs.push_back({job_num, pid, full_command});
+                    bg_jobs.push_back({job_number, pid, full_command});
                     std::cout << "[" << job_num << "] " << pid << std::endl;
                     output_handled = true;
                 }
@@ -526,9 +542,9 @@ int main(){
                         waitpid(pid, &status, 0);
                         output_handled = true;
                     } else {
-                        int job_num = next_job_number++;
-                        bg_jobs.push_back({job_num, pid, full_command});
-                        output_text << "[" << job_num << "] " << pid << std::endl;
+                        // int job_num = next_job_number++;
+                        bg_jobs.push_back({job_number, pid, full_command});
+                        output_text << "[" << job_number << "] " << pid << std::endl;
                         output_handled = false;
                     }
                 }
