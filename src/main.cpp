@@ -566,6 +566,6 @@ int main(){
                 std::cerr << output_error_text.str();
             }
         }
-        if (!bg_jobs.empty()){ reapingJob(bg_jobs); }
+        if (!bg_jobs.empty()){ reapingJob(bg_jobs, jobID_assigner); }
     }
 }
