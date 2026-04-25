@@ -421,13 +421,32 @@ int main(){
         }
 
         if(program_name == "exit"){  storeHistoryMemory(); break; }
-        else if(program_name == "echo") { builtin_echo(args, output_text); }
-        else if(program_name == "pwd")  { builtin_pwd(output_text); }
-        else if(program_name == "cat")  { builtin_cat(args, output_text, output_error_text); }
-        else if(program_name == "cd")   { builtin_cd(args, output_error_text); }
-        else if(program_name == "type") { builtin_type(args, output_text, output_error_text); }
+        else if(builtins.count(program_name) && program_name != "exit" && program_name != "jobs") {
+            if (background) {
+                pid_t pid = fork();
+                if (pid == 0) {
+                    if(program_name == "echo") { builtin_echo(args, std::cout); }
+                    else if(program_name == "pwd")  { builtin_pwd(std::cout); }
+                    else if(program_name == "cat")  { builtin_cat(args, std::cout, std::cerr); }
+                    else if(program_name == "cd")   { builtin_cd(args, std::cerr); }
+                    else if(program_name == "type") { builtin_type(args, std::cout, std::cerr); }
+                    else if(program_name == "history"){ builtin_history(args, std::cout, std::cerr); }
+                    exit(0);
+                } else if (pid > 0) {
+                    int job_num = next_job_number++;
+                    std::cout << "[" << job_num << "] " << pid << std::endl;
+                    output_handled = true;
+                }
+            } else {
+                if(program_name == "echo") { builtin_echo(args, output_text); }
+                else if(program_name == "pwd")  { builtin_pwd(output_text); }
+                else if(program_name == "cat")  { builtin_cat(args, output_text, output_error_text); }
+                else if(program_name == "cd")   { builtin_cd(args, output_error_text); }
+                else if(program_name == "type") { builtin_type(args, output_text, output_error_text); }
+                else if(program_name == "history"){ builtin_history(args, output_text, output_error_text); }
+            }
+        }
         else if(program_name == "jobs") { continue; }
-        else if(program_name == "history"){ builtin_history(args, output_text, output_error_text); }
         else{
             std::string exec_path = findExecPath(program_name);
             if(!exec_path.empty()){
