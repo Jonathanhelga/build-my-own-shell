@@ -360,6 +360,7 @@ void loadHistoryMemory(){
 int main(){
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
+    signal(SIGCHLD, SIG_IGN);
     rl_attempted_completion_function = shell_completer;
     std::vector<std::string> session_history;
 
@@ -383,7 +384,12 @@ int main(){
         bool is_operator_appends_error_exists = false;
         auto tokens = tokenize(input, is_redirect_exists, is_redirect_error_exists, is_operator_appends_exists, is_operator_appends_error_exists);
         if (tokens.empty()) continue;
-
+        bool background = false;
+        if (!tokens.empty() && tokens.back() == "&") {
+            background = true;
+            tokens.pop_back();
+            if (tokens.empty()) continue;
+        }
         bool has_pipe = false;
         for (const auto &tok : tokens) if (tok == "|") { has_pipe = true; break; }
         if (has_pipe) { runPipeline(splitByPipe(tokens)); continue; }
@@ -433,8 +439,11 @@ int main(){
                     execv(exec_path.c_str(), argv.data());
                     exit(1);
                 } else if(pid > 0){
-                    int status;
-                    waitpid(pid, &status, 0);
+                    if (!background) {
+                        int status;
+                        waitpid(pid, &status, 0);  // foreground: block
+                    }
+
                     output_handled = true;
                 }
             } else {
