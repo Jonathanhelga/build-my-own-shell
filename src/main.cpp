@@ -364,6 +364,15 @@ void runBuiltin(const std::string& program_name, const std::vector<std::string>&
     else if(program_name == "history"){ builtin_history(args, out, err); }
 }
 
+struct BackgroundJob {
+  int job_id;
+  pid_t pid;
+  std::vector<std::string> command;
+};
+
+std::vector<BackgroundJob> bg_jobs;
+int next_job_number = 1;
+
 void reapingJob(std::vector<BackgroundJob>& bg_jobs){
     int jobs_total = (int)bg_jobs.size();
     std::vector<BackgroundJob> remaining;
@@ -383,15 +392,6 @@ void reapingJob(std::vector<BackgroundJob>& bg_jobs){
         bg_jobs = remaining;
     }
 }
-
-struct BackgroundJob {
-  int job_id;
-  pid_t pid;
-  std::vector<std::string> command;
-};
-
-std::vector<BackgroundJob> bg_jobs;
-int next_job_number = 1;
 
 int main(){
     std::cout << std::unitbuf;
