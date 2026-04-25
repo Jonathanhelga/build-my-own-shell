@@ -449,12 +449,14 @@ int main(){
                 } else if(pid > 0){
                     if (!background) {
                         int status;
-                        waitpid(pid, &status, 0);  // foreground: block
+                        waitpid(pid, &status, 0);
+                        output_handled = true;
+                    } else {
+                        int job_num = next_job_number++;
+                        // bg_jobs.push_back({job_num, pid});
+                        output_text << "[" << job_num << "] " << pid << std::endl;
+                        output_handled = false;
                     }
-                    int job_num = next_job_number++;
-                    // bg_jobs.push_back({job_num, pid});
-                    std::cout << "[" << job_num << "] " << pid << std::endl;
-                    output_handled = true;
                 }
             } else {
                 output_error_text << program_name << ": not found\n";
