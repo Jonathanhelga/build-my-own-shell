@@ -1,4 +1,6 @@
 #include <cstdlib>
+// #include <cerrno>
+// #include <csignal>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
@@ -361,10 +363,30 @@ void runBuiltin(const std::string& program_name, const std::vector<std::string>&
     else if(program_name == "history"){ builtin_history(args, out, err); }
 }
 
+void reapingJob(std::vector<BackgroundJob>& bg_jobs){
+    int jobs_total = (int)bg_jobs.size();
+    std::vector<BackgroundJob> remaining;
+    for(int i = 0; i < jobs_total; i++){
+        if(waitpid(bg_jobs[i].pid, nullptr, WNOHANG) != 0){ 
+            char sign = (i == jobs_total - 1) ? '+' : (i == jobs_total - 2) ? '-' : ' ';
+            const auto& toks = bg_jobs[i].command;
+            int end = (int)toks.size() - 1;
+            std::string cmd;
+            for(int j = 0; j < end; j++){
+                if(j > 0) cmd += " ";
+                cmd += toks[j];
+            }
+            std::cout << "[" << bg_jobs[i].job_id << "]" << sign << "  " << "Done" << "                 " << cmd << std::endl;
+        } 
+        else { remaining.push_back(bg_jobs[i]); }
+        bg_jobs = remaining;
+    }
+}
+
 struct BackgroundJob {
   int job_id;
   pid_t pid;
-  std::string command;
+  std::vector<std::string> command;
 };
 
 std::vector<BackgroundJob> bg_jobs;
@@ -393,15 +415,12 @@ int main(){
         auto result = tokenize(input);
         auto tokens = result.tokens;
         if (tokens.empty()) continue;
-
+        if (!bg_jobs.empty()){ reapingJob(bg_jobs); }
         bool background = false;
-        std::string full_command;
+        std::vector<std::string> full_command;
         if (!tokens.empty() && tokens.back() == "&") {
             background = true;
-            for (size_t i = 0; i < tokens.size(); i++) {
-                if (i > 0) full_command += " ";
-                full_command += tokens[i];
-            }
+            full_command = tokens; // includes "&" at the back
             tokens.pop_back();
             if (tokens.empty()) continue;
         }
@@ -450,7 +469,7 @@ int main(){
             std::vector<std::string> statuses(jobs_total);
             std::vector<BackgroundJob> remaining;
 
-            // Single pass: determine status of each job
+            // Single pass determine status of each job
             for(int i = 0; i < jobs_total; i++){
                 if(waitpid(bg_jobs[i].pid, nullptr, WNOHANG) != 0){
                     statuses[i] = "Done";
@@ -463,9 +482,15 @@ int main(){
             // Print all jobs with aligned columns
             for(int i = 0; i < jobs_total; i++){
                 char sign = (i == jobs_total - 1) ? '+' : (i == jobs_total - 2) ? '-' : ' ';
-                std::string cmd = bg_jobs[i].command;
-                if(statuses[i] == "Done" && cmd.size() >= 2 && cmd.substr(cmd.size() - 2) == " &")
-                    cmd = cmd.substr(0, cmd.size() - 2);
+                const auto& toks = bg_jobs[i].command;
+                int end = (statuses[i] == "Done" && !toks.empty() && toks.back() == "&")
+                          ? (int)toks.size() - 1
+                          : (int)toks.size();
+                std::string cmd;
+                for(int j = 0; j < end; j++){
+                    if(j > 0) cmd += " ";
+                    cmd += toks[j];
+                }
                 std::cout << "[" << bg_jobs[i].job_id << "]" << sign
                           << "  " << statuses[i] << "                 " << cmd << std::endl;
             }
