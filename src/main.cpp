@@ -20,8 +20,17 @@ int history_last_appended = 0;
 
 
 // g++ -std=c++17 -o shell src/main.cpp -lreadline
+
+struct ParseResult {
+    std::vector<std::string> tokens;
+    bool redirect_out = false;
+    bool redirect_err = false;
+    bool append_out   = false;
+    bool append_err   = false;
+};
+
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current);
-std::vector<std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists, bool &is_operator_appends_error_exists);
+ParseResult tokenize(const std::string &input);
 std::string findExecPath(const std::string &program_name);
 void execSegment(const std::vector<std::string> &seg);
 void runPipeline(const std::vector<std::vector<std::string>> &segments);
@@ -135,8 +144,8 @@ bool checkBackslash(char quoteChar, const std::string& input, size_t& i, std::st
   return false; 
 }
 
-std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_exists, bool &is_redirect_error_exists, bool &is_operator_appends_exists, bool &is_operator_appends_error_exists){
-  std::vector <std::string> tokens;
+ParseResult tokenize(const std::string &input){
+  ParseResult result;
   std::string current;
   size_t i = 0;
   while(i < input.size()){
@@ -151,23 +160,20 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
         current += input[i];
         i++;
       }
-      if(i < input.size()) i++; // skip closing '
+      if(i < input.size()) i++; // skip closing quote
     }
     else if(c == '\\'){
       i++;
-      if(i < input.size()){
-        if(input[i] == '\\') { current += input[i++]; }
-        else { current += input[i++]; }
-      }
+      if(i < input.size()) current += input[i++];
     }
     else if (c == ' ' || c == '\t'){
-      if(current == ">" || current == "1>"){ is_redirect_exists = true; }
-      else if(current == "2>") { is_redirect_error_exists = true; }
-      else if(current == ">>" || current == "1>>"){ is_operator_appends_exists = true; }
-      else if(current == "2>>") { is_operator_appends_error_exists = true; }
+      if(current == ">" || current == "1>")       { result.redirect_out = true; }
+      else if(current == "2>")                    { result.redirect_err = true; }
+      else if(current == ">>" || current == "1>>") { result.append_out  = true; }
+      else if(current == "2>>")                   { result.append_err   = true; }
 
       if(!current.empty()){
-        tokens.push_back(current);
+        result.tokens.push_back(current);
         current.clear();
       }
       i++;
@@ -177,8 +183,8 @@ std::vector <std::string> tokenize(const std::string &input, bool &is_redirect_e
       i++;
     }
   }
-  if(!current.empty()){ tokens.push_back(current); }
-  return tokens;
+  if(!current.empty()){ result.tokens.push_back(current); }
+  return result;
 }
 
 std::string findExecPath(const std::string &program_name){
@@ -354,12 +360,13 @@ void runBuiltin(const std::string& program_name, const std::vector<std::string>&
     else if(program_name == "type") { builtin_type(args, out, err); }
     else if(program_name == "history"){ builtin_history(args, out, err); }
 }
-// struct BackgroundJob {
-//   int job_number;
-//   pid_t pid;
-// };
 
-// vector<BackgroundJob> bg_jobs;
+struct BackgroundJob {
+  int job_number;
+  pid_t pid;
+};
+
+vector<BackgroundJob> bg_jobs;
 int next_job_number = 1;
 
 int main(){
@@ -383,11 +390,8 @@ int main(){
         }
         free(line);
 
-        bool is_redirect_exists = false;
-        bool is_redirect_error_exists = false;
-        bool is_operator_appends_exists = false;
-        bool is_operator_appends_error_exists = false;
-        auto tokens = tokenize(input, is_redirect_exists, is_redirect_error_exists, is_operator_appends_exists, is_operator_appends_error_exists);
+        auto result = tokenize(input);
+        auto tokens = result.tokens;
         if (tokens.empty()) continue;
         bool background = false;
         if (!tokens.empty() && tokens.back() == "&") {
@@ -407,7 +411,7 @@ int main(){
         std::vector<std::string> args(tokens.begin() + 1, tokens.end());
 
         std::string redirect_file;
-        if (is_redirect_exists || is_redirect_error_exists || is_operator_appends_exists || is_operator_appends_error_exists) {
+        if (result.redirect_out || result.redirect_err || result.append_out || result.append_err) {
             for (size_t i = 0; i < args.size(); i++) {
                 if ((args[i] == ">" || args[i] == "1>" || args[i] == "2>" || args[i] == ">>" || args[i] == "1>>" || args[i] == "2>>") && i + 1 < args.size()) {
                     redirect_file = args[i + 1];
@@ -440,9 +444,9 @@ int main(){
                 pid_t pid = fork();
                 if(pid == 0){
                     if(!redirect_file.empty()){
-                        int flags = O_WRONLY | O_CREAT | (is_operator_appends_exists || is_operator_appends_error_exists ? O_APPEND : O_TRUNC);
+                        int flags = O_WRONLY | O_CREAT | (result.append_out || result.append_err ? O_APPEND : O_TRUNC);
                         int fd = open(redirect_file.c_str(), flags, 0644);
-                        if(is_redirect_error_exists || is_operator_appends_error_exists){ dup2(fd, STDERR_FILENO); }
+                        if(result.redirect_err || result.append_err){ dup2(fd, STDERR_FILENO); }
                         else { dup2(fd, STDOUT_FILENO); }
                         close(fd);
                     }
@@ -470,10 +474,10 @@ int main(){
         }
         
         if (!output_handled) {
-            if(is_redirect_exists || is_redirect_error_exists ||  is_operator_appends_exists || is_operator_appends_error_exists){
-                auto flags = is_operator_appends_exists || is_operator_appends_error_exists ? std::ios::app : std::ios::trunc;
+            if(result.redirect_out || result.redirect_err || result.append_out || result.append_err){
+                auto flags = result.append_out || result.append_err ? std::ios::app : std::ios::trunc;
                 std::ofstream file(redirect_file, flags);
-                if(is_redirect_exists || is_operator_appends_exists){
+                if(result.redirect_out || result.append_out){
                     file << output_text.str();
                     std::cerr << output_error_text.str();
                 }
