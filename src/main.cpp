@@ -396,10 +396,13 @@ int main(){
         if (tokens.empty()) continue;
 
         bool background = false;
-        std::vector<std::string> full_command;
+        std::string full_command;
         if (!tokens.empty() && tokens.back() == "&") {
             background = true;
-            full_command = tokens;
+            for (size_t i = 0; i < tokens.size(); i++) {
+                if (i > 0) full_command += " ";
+                full_command += tokens[i];
+            }
             tokens.pop_back();
             if (tokens.empty()) continue;
         }
@@ -435,7 +438,7 @@ int main(){
                     exit(0);
                 } else if (pid > 0) {
                     int job_num = next_job_number++;
-                    bg_jobs.push_back({job_num, pid, program_name});
+                    bg_jobs.push_back({job_num, pid, full_command});
                     std::cout << "[" << job_num << "] " << pid << std::endl;
                     output_handled = true;
                 }
@@ -445,7 +448,7 @@ int main(){
         }
         else if(program_name == "jobs") {
             for(const auto& job : bg_jobs){
-                std::cout << "[" << job.job_id << "]+ Running " << job.command << std::endl;
+                std::cout << "[" << job.job_id << "]+  Running                 " << job.command << std::endl;
             }
             output_handled = true;
         }
@@ -474,7 +477,7 @@ int main(){
                         output_handled = true;
                     } else {
                         int job_num = next_job_number++;
-                        bg_jobs.push_back({job_num, pid, program_name});
+                        bg_jobs.push_back({job_num, pid, full_command});
                         output_text << "[" << job_num << "] " << pid << std::endl;
                         output_handled = false;
                     }
