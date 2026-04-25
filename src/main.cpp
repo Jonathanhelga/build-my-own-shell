@@ -396,10 +396,10 @@ int main(){
         if (tokens.empty()) continue;
 
         bool background = false;
-        // std::vector<std::string> full_command;
+        std::vector<std::string> full_command;
         if (!tokens.empty() && tokens.back() == "&") {
             background = true;
-            // full_command = tokens;
+            full_command = tokens;
             tokens.pop_back();
             if (tokens.empty()) continue;
         }
