@@ -75,3 +75,15 @@
   direct control flow into the else branch, rather than the if branch?"           
   ▎ "Could you please rephrase all of my previous questions in a more professional
    manner?"      
+
+  ▎ "If the user sets the HISTFILE environment variable when starting a new       
+  session, will commands previously stored in ~/.shell_history still be loaded    
+  into history_memory?"                                                           
+  ▎ "I understand the storeHistoryMemory() appends from index 0 to /tmp/myhistory,
+   but if HISTFILE is unset or empty, wouldn't the commands be appended to        
+  ~/.shell_history instead, since the if-statement would fail to execute?"
+  ▎ "In what scenarios would the condition if (histfile && histfile[0] != '\0')   
+  evaluate to false?"                                                             
+  ▎ "You mentioned that /tmp/myhistory does not exist yet in Session 1 — since the
+   file doesn't exist, doesn't that mean it is effectively empty, causing the     
+  condition to fail?"     

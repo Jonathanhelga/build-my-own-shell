@@ -33,7 +33,7 @@ void storeHistoryMemory();
 void loadHistoryMemory();
 
 
-const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history"};
+const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history", "jobs"};
 
 void builtin_echo(const std::vector<std::string>& args, std::ostream& out) {
     for (size_t i = 0; i < args.size(); i++) {
@@ -377,6 +377,7 @@ int main(){
         else if(program_name == "cat")  { builtin_cat(args, output_text, output_error_text); }
         else if(program_name == "cd")   { builtin_cd(args, output_error_text); }
         else if(program_name == "type") { builtin_type(args, output_text, output_error_text); }
+        else if(program_name == "jobs") { continue; }
         else if(program_name == "history"){
             if (!args.empty() && args[0] == "-r") {
                 if (args.size() < 2) {
