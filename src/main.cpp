@@ -378,7 +378,7 @@ void reapingJob(std::vector<BackgroundJob>& bg_jobs){
     int jobs_total = (int)bg_jobs.size();
     std::vector<BackgroundJob> remaining;
     for(int i = 0; i < jobs_total; i++){
-        if(waitpid(bg_jobs[i].pid, nullptr, WNOHANG) != 0){ 
+        if(waitpid(bg_jobs[i].pid, nullptr, WNOHANG) != 0){
             char sign = (i == jobs_total - 1) ? '+' : (i == jobs_total - 2) ? '-' : ' ';
             const auto& toks = bg_jobs[i].command;
             int end = (int)toks.size() - 1;
@@ -388,10 +388,10 @@ void reapingJob(std::vector<BackgroundJob>& bg_jobs){
                 cmd += toks[j];
             }
             std::cout << "[" << bg_jobs[i].job_id << "]" << sign << "  " << "Done" << "                 " << cmd << std::endl;
-        } 
+        }
         else { remaining.push_back(bg_jobs[i]); }
-        bg_jobs = remaining;
     }
+    bg_jobs = remaining; // moved outside the loop
 }
 
 int main(){
