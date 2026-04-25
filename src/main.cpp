@@ -464,9 +464,11 @@ int main(){
             // Print all jobs with aligned columns
             for(int i = 0; i < jobs_total; i++){
                 char sign = (i == jobs_total - 1) ? '+' : (i == jobs_total - 2) ? '-' : ' ';
-                std::string padding(24 - statuses[i].size(), ' ');
+                std::string cmd = bg_jobs[i].command;
+                if(statuses[i] == "Done" && cmd.size() >= 2 && cmd.substr(cmd.size() - 2) == " &")
+                    cmd = cmd.substr(0, cmd.size() - 2);
                 std::cout << "[" << bg_jobs[i].job_id << "]" << sign
-                          << "  " << statuses[i] << padding << bg_jobs[i].command << std::endl;
+                          << "  " << statuses[i] << "                 " << cmd << std::endl;
             }
 
             // Remove done jobs
