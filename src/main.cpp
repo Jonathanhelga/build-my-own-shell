@@ -31,6 +31,7 @@ char** shell_completer(const char* text, int start, int end);
 std::string getHistoryPath();
 void storeHistoryMemory();
 void loadHistoryMemory();
+void runBuiltin(const std::string& program_name, const std::vector<std::string>& args, std::ostream& out, std::ostream& err);
 
 const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history", "jobs"};
 
