@@ -89,12 +89,12 @@
   condition to fail?"     
 
     1. Original: can i change this line if (!args.empty()) show = std::stoi(args[0]); to if (!args.empty()) show = std::stoi(args[0]) : 0;
-  Rephrased: "Can I replace the if statement if (!args.empty()) show = std::stoi(args[0]); with a ternary expression?"                  
+    Rephrased: "Can I replace the if statement if (!args.empty()) show = std::stoi(args[0]); with a ternary expression?"                  
   2. Original: hei claude can you check how I modularized builtin history into a separate function outside the main correct or not      
-  Rephrased: "Could you review whether my refactoring of builtin_history into a standalone function outside of main is structured       
+    Rephrased: "Could you review whether my refactoring of builtin_history into a standalone function outside of main is structured       
   correctly?"                                                                                                                           
   3. Original: claude do you think its not structurally possible to use my method? do you think creating a separate condition when args 
   is not empty at the beginning is not efficient                                                                                        
-  Rephrased: "Do you think my approach is structurally viable? Is adding a separate early check for non-empty args at the top of the  
+    Rephrased: "Do you think my approach is structurally viable? Is adding a separate early check for non-empty args at the top of the  
   function considered inefficient?"                                                                                                     
                                             

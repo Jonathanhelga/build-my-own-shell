@@ -32,7 +32,6 @@ std::string getHistoryPath();
 void storeHistoryMemory();
 void loadHistoryMemory();
 
-
 const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history", "jobs"};
 
 void builtin_echo(const std::vector<std::string>& args, std::ostream& out) {
@@ -247,34 +246,23 @@ void runPipeline(const std::vector<std::vector<std::string>> &segments) {
 }
 void execSegment(const std::vector<std::string> &seg) {
     if (seg.empty()) exit(0);
-    const std::string &cmd = seg[0];
+    const std::string cmd = seg[0];
     std::vector<std::string> args(seg.begin() + 1, seg.end());
-
-    if (cmd == "echo") {
-        builtin_echo(args, std::cout);
+    if(builtins.count(cmd)){
+        runBuiltin(cmd, args, std::cout, std::cerr);
         exit(0);
-    } else if (cmd == "pwd") {
-        builtin_pwd(std::cout);
-        exit(0);
-    } else if (cmd == "type") {
-        builtin_type(args, std::cout, std::cerr);
-        exit(0);
-    } else if (cmd == "cat") {
-        builtin_cat(args, std::cout, std::cerr);
-        exit(0);
-    } else {
-        std::string exec_path = findExecPath(cmd);
-        if (exec_path.empty()) {
-            std::cerr << cmd << ": not found\n";
-            exit(127);
-        }
-        std::vector<char*> argv;
-        argv.push_back((char*)cmd.c_str());
-        for (auto &a : args) argv.push_back((char*)a.c_str());
-        argv.push_back(nullptr);
-        execv(exec_path.c_str(), argv.data());
-        exit(1);
     }
+    std::string exec_path = findExecPath(cmd);
+    if (exec_path.empty()) {
+        std::cerr << cmd << ": not found\n";
+        exit(127);
+    }
+    std::vector<char*> argv;
+    argv.push_back((char*)cmd.c_str());
+    for (auto &a : args) argv.push_back((char*)a.c_str());
+    argv.push_back(nullptr);
+    execv(exec_path.c_str(), argv.data());
+    exit(1);
 }
 
 char* builtin_completer(const char* text, int state) {
@@ -357,6 +345,14 @@ void loadHistoryMemory(){
         history_memory.erase(history_memory.begin(), history_memory.begin() + history_memory.size() - HISTSIZE);
 }
 
+void runBuiltin(const std::string& program_name, const std::vector<std::string>& args, std::ostream& out, std::ostream& err){
+    if(program_name == "echo") { builtin_echo(args, out); }
+    else if(program_name == "pwd")  { builtin_pwd(out); }
+    else if(program_name == "cat")  { builtin_cat(args, out, err); }
+    else if(program_name == "cd")   { builtin_cd(args, err); }
+    else if(program_name == "type") { builtin_type(args, out, err); }
+    else if(program_name == "history"){ builtin_history(args, out, err); }
+}
 // struct BackgroundJob {
 //   int job_number;
 //   pid_t pid;
@@ -425,12 +421,7 @@ int main(){
             if (background) {
                 pid_t pid = fork();
                 if (pid == 0) {
-                    if(program_name == "echo") { builtin_echo(args, std::cout); }
-                    else if(program_name == "pwd")  { builtin_pwd(std::cout); }
-                    else if(program_name == "cat")  { builtin_cat(args, std::cout, std::cerr); }
-                    else if(program_name == "cd")   { builtin_cd(args, std::cerr); }
-                    else if(program_name == "type") { builtin_type(args, std::cout, std::cerr); }
-                    else if(program_name == "history"){ builtin_history(args, std::cout, std::cerr); }
+                    runBuiltin(program_name, args, std::cout, std::cerr);
                     exit(0);
                 } else if (pid > 0) {
                     int job_num = next_job_number++;
@@ -438,12 +429,7 @@ int main(){
                     output_handled = true;
                 }
             } else {
-                if(program_name == "echo") { builtin_echo(args, output_text); }
-                else if(program_name == "pwd")  { builtin_pwd(output_text); }
-                else if(program_name == "cat")  { builtin_cat(args, output_text, output_error_text); }
-                else if(program_name == "cd")   { builtin_cd(args, output_error_text); }
-                else if(program_name == "type") { builtin_type(args, output_text, output_error_text); }
-                else if(program_name == "history"){ builtin_history(args, output_text, output_error_text); }
+                runBuiltin(program_name, args, output_text, output_error_text);
             }
         }
         else if(program_name == "jobs") { continue; }
