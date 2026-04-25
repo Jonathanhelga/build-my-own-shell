@@ -501,6 +501,7 @@ int main(){
             bg_jobs = remaining;
             output_handled = true;
         }
+        
         else{
             std::string exec_path = findExecPath(program_name);
             if(!exec_path.empty()){
@@ -535,7 +536,6 @@ int main(){
                 output_error_text << program_name << ": not found\n";
             }
         }
-        if (!bg_jobs.empty()){ reapingJob(bg_jobs); }
         if (!output_handled) {
             if(result.redirect_out || result.redirect_err || result.append_out || result.append_err){
                 auto flags = result.append_out || result.append_err ? std::ios::app : std::ios::trunc;
@@ -554,5 +554,6 @@ int main(){
                 std::cerr << output_error_text.str();
             }
         }
+        if (!bg_jobs.empty()){ reapingJob(bg_jobs); }
     }
 }
