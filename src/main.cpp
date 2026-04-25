@@ -447,8 +447,15 @@ int main(){
             }
         }
         else if(program_name == "jobs") {
+            let sign = ' ';
+            let jobs_total = bg_jobs.size();
+            int i = 0;
             for(const auto& job : bg_jobs){
-                std::cout << "[" << job.job_id << "]+  Running                 " << job.command << std::endl;
+                if(i == jobs_total-2){ sign = '-';}
+                if(i == jobs_total-1){ sign = '+';}
+                std::cout << "[" << job.job_id << "]" << sign << "  Running                 " << job.command << std::endl;
+                i++;
+                sign = ' ';
             }
             output_handled = true;
         }
