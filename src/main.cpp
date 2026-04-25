@@ -82,6 +82,41 @@ void builtin_type(const std::vector<std::string>& args, std::ostream& out, std::
         else err << args[0] << ": not found\n";
     }
 }
+void builtin_history(const std::vector<std::string>& args, std::ostream& out, std::ostream& err){
+    int total = (int)history_memory.size();
+    if(!args.empty()){
+        if(args[0] == "-r"){
+            if (args.size() < 2) { err << "history: -r: missing filename\n"; return; }
+            std::ifstream hf(args[1]);
+            if (!hf) { err << "history: " << args[1] << ": cannot open file\n"; return; }
+            std::string line;
+            while (std::getline(hf, line)) {
+                if (!line.empty()) { history_memory.push_back(line); add_history(line.c_str()); }
+            }
+        }
+        else if(args[0] == "-w"){
+            if (args.size() < 2) { err << "history: -w: missing filename\n"; return; }
+            std::ofstream hf(args[1]);
+            if (!hf) { err << "history: " << args[1] << ": cannot open file\n"; return; }
+            for(const auto& cmd: history_memory){ hf << cmd << '\n'; }
+        }
+        else if(args[0] == "-a"){
+            if (args.size() < 2) { err << "history: -a: missing filename\n"; return; }
+            std::ofstream hf(args[1], std::ios::app);
+            if (!hf) { err << "history: " << args[1] << ": cannot open file\n"; return; }
+            for (int i = history_last_appended; i < total; i++) { hf << history_memory[i] << '\n'; }
+            history_last_appended = total;
+        }
+        else{
+            int show = std::stoi(args[0]);
+            int startIdx = std::max(0, total - show);
+            for (int i = startIdx; i < total; i++) { out << "  " << (i + 1) << "  " << history_memory[i] << '\n'; }
+        }
+    }
+    else{
+        for (int i = 0; i < total; i++) { out << "  " << (i + 1) << "  " << history_memory[i] << '\n'; }
+    }
+}
 bool checkBackslash(char quoteChar, const std::string& input, size_t& i, std::string& current){
   if(quoteChar == '\"'){
     i++; // skip the '\'
@@ -378,58 +413,7 @@ int main(){
         else if(program_name == "cd")   { builtin_cd(args, output_error_text); }
         else if(program_name == "type") { builtin_type(args, output_text, output_error_text); }
         else if(program_name == "jobs") { continue; }
-        else if(program_name == "history"){
-            if (!args.empty() && args[0] == "-r") {
-                if (args.size() < 2) {
-                    std::cerr << "history: -r: missing filename\n";
-                } else {
-                    std::ifstream hf(args[1]);
-                    if (!hf) {
-                        std::cerr << "history: " << args[1] << ": cannot open file\n";
-                    } else {
-                        std::string line;
-                        while (std::getline(hf, line)) {
-                            if (!line.empty()) {
-                                history_memory.push_back(line);
-                                add_history(line.c_str());
-                            }
-                        }
-                    }
-                }
-            } 
-            else if(!args.empty() && args[0] == "-w"){
-                if (args.size() < 2) { std::cerr << "history: -w: missing filename\n"; }
-                else{
-                    std::ofstream hf(args[1]);
-                    if (!hf) { std::cerr << "history: " << args[1] << ": cannot open file\n"; } 
-                    else{
-                        for(const auto& cmd: history_memory){ hf << cmd << '\n'; }
-                    }
-                }
-            }
-            else if(!args.empty() && args[0] == "-a"){
-                if (args.size() < 2) { std::cerr << "history: -a: missing filename\n"; }
-                else{
-                    std::ofstream hf(args[1], std::ios::app);
-                    if (!hf) { std::cerr << "history: " << args[1] << ": cannot open file\n"; }
-                    else{
-                        for (int i = history_last_appended; i < (int)history_memory.size(); i++) {
-                            hf << history_memory[i] << '\n';
-                        }
-                        history_last_appended = (int)history_memory.size();
-                    }
-                }
-            }
-            else {
-                int total = (int)history_memory.size();
-                int show = total;
-                if (!args.empty()) show = std::stoi(args[0]);
-                int startIdx = std::max(0, total - show);
-                for (int i = startIdx; i < total; i++) {
-                    std::cout << "    " << (i + 1) << "  " << history_memory[i] << '\n';
-                }
-            }
-        }
+        else if(program_name == "history"){ builtin_history(args, output_text, output_error_text); }
         else{
             std::string exec_path = findExecPath(program_name);
             if(!exec_path.empty()){
