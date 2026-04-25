@@ -357,6 +357,14 @@ void loadHistoryMemory(){
         history_memory.erase(history_memory.begin(), history_memory.begin() + history_memory.size() - HISTSIZE);
 }
 
+// struct BackgroundJob {
+//   int job_number;
+//   pid_t pid;
+// };
+
+// vector<BackgroundJob> bg_jobs;
+int next_job_number = 1;
+
 int main(){
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
@@ -443,7 +451,9 @@ int main(){
                         int status;
                         waitpid(pid, &status, 0);  // foreground: block
                     }
-
+                    int job_num = next_job_number++;
+                    // bg_jobs.push_back({job_num, pid});
+                    std::cout << "[" << job_num << "] " << pid << std::endl;
                     output_handled = true;
                 }
             } else {
