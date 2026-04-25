@@ -373,7 +373,6 @@ int next_job_number = 1;
 int main(){
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
-    signal(SIGCHLD, SIG_IGN);
     rl_attempted_completion_function = shell_completer;
     std::vector<std::string> session_history;
 
@@ -453,7 +452,7 @@ int main(){
 
             // Single pass: determine status of each job
             for(int i = 0; i < jobs_total; i++){
-                if(waitpid(bg_jobs[i].pid, nullptr, WNOHANG) > 0){
+                if(waitpid(bg_jobs[i].pid, nullptr, WNOHANG) != 0){
                     statuses[i] = "Done";
                 } else {
                     statuses[i] = "Running";
