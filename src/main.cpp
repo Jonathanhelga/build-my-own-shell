@@ -37,10 +37,6 @@ struct BackgroundJob {
   std::vector<std::string> command;
 };
 
-struct JobNumber {
-    bool empty = true;
-};
-
 std::vector<BackgroundJob> bg_jobs;
 
 bool checkBackslash(char quoteChar, const std::string &input, size_t &i, std::string &current);
@@ -55,7 +51,7 @@ std::string getHistoryPath();
 void storeHistoryMemory();
 void loadHistoryMemory();
 void runBuiltin(const std::string& program_name, const std::vector<std::string>& args, std::ostream& out, std::ostream& err);
-void reapingJob(std::vector<BackgroundJob>& bg_jobs);
+void reapingJob(std::vector<BackgroundJob>& bg_jobs, std::vector<bool>& jobID_assigner);
 
 const std::set<std::string> builtins = {"exit", "echo", "type", "pwd", "cd", "history", "jobs"};
 
@@ -376,10 +372,10 @@ void runBuiltin(const std::string& program_name, const std::vector<std::string>&
     else if(program_name == "history"){ builtin_history(args, out, err); }
 }
 
-std::vector <JobNumber> jobID_assigner;
+std::vector<bool> jobID_assigner;
 int next_job_number = 1;
 int job_number = 0;
-void reapingJob(std::vector<BackgroundJob>& bg_jobs, std::vector <JobNumber>& jobID_assigner){
+void reapingJob(std::vector<BackgroundJob>& bg_jobs, std::vector<bool>& jobID_assigner){
     int jobs_total = (int)bg_jobs.size();
     std::vector<BackgroundJob> remaining;
     for(int i = 0; i < jobs_total; i++){
@@ -393,7 +389,7 @@ void reapingJob(std::vector<BackgroundJob>& bg_jobs, std::vector <JobNumber>& jo
                 cmd += toks[j];
             }
             std::cout << "[" << bg_jobs[i].job_id << "]" << sign << "  " << "Done" << "                 " << cmd << std::endl;
-            jobID_assigner[(bg_jobs[i].job_id)-1].empty = true;
+            jobID_assigner[(bg_jobs[i].job_id)-1] = true;
         }
         else { remaining.push_back(bg_jobs[i]); }
     }
@@ -430,8 +426,8 @@ int main(){
             full_command = tokens; // includes "&" at the back
             job_number = -1;                                                                                                                         
             for(int i = 0; i < (int)jobID_assigner.size(); i++){
-                if(jobID_assigner[i].empty){                                                                                                         
-                    jobID_assigner[i].empty = false;  // mark as in-use
+                if(jobID_assigner[i]){
+                    jobID_assigner[i] = false;  // mark as in-use
                     job_number = i + 1;                                                                                                              
                     break;
                 }                                                                                                                                    
